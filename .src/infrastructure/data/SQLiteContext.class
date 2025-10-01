@@ -1,0 +1,348 @@
+' Gambas class file
+
+' Gambas class file - SQLiteContext para Gacela
+' Maneja la conexión y esquema de la base de datos SQLite
+
+Public Const DB_NAME As String = "gacela.db"
+Public Const DB_TYPE As String = "sqlite3"
+Public Const SCHEMA_VERSION As Integer = 1
+
+Private $db As Connection
+Private $logger As Log4Gambas
+Private $databasePath As String
+
+' Property para acceso a la conexión
+Property Read DBConnection As Connection
+
+' Constructor que recibe la ruta completa y el logger
+Public Sub _new(databasePath As String, logger As Log4Gambas)
+
+  $logger = logger
+  $databasePath = databasePath & DB_NAME
+
+  $logger.Info("Inicializando contexto de base de datos SQLite")
+  $logger.Debug("Ruta de base de datos: " & $databasePath)
+
+  InitializeDatabase()
+
+  ' If Error Then
+  '   $logger.Fatal("Error fatal inicializando base de datos: " & Error.Text)
+  '   ERROR.Propagate
+  ' Endif
+
+End
+
+' Inicializa la base de datos (crear si no existe, conectar)
+Public Sub InitializeDatabase()
+
+  $logger.Info("Estableciendo conexión a la base de datos Gacela")
+
+  ' 1. Verificar si la base de datos ya existe
+  If Not Exist($databasePath) Then
+    CreateDatabase()
+  Endif
+
+  ' 2. Abrir la conexión a la base de datos
+  Try ConnectDatabase()
+  If Error Then ERROR.Propagate
+
+  $logger.Info("Conexión a la base de datos establecida correctamente")
+
+End
+
+' Crea la base de datos física usando el patrón nativo de Gambas
+Private Sub CreateDatabase()
+
+  Dim directoryPath As String = File.Dir($databasePath)
+  Dim fileName As String = File.Name($databasePath)
+
+  $logger.Warning("El archivo de base de datos no existe. Creando: " & $databasePath)
+
+  ' Crear conexión temporal para crear la BD
+  $db = New Connection
+  $db.Type = DB_TYPE
+  $db.Host = directoryPath
+  $db.Name = "" ' Liberamos el nombre para poder crear la BD física
+
+  $db.Open()
+  ' If Error Then
+  '   $logger.Fatal("No se puede abrir conexión para crear BD: " & Error.Text)
+  '   ERROR.Propagate
+  ' Endif
+
+  ' Crear la base de datos si no existe
+  If Not $db.Databases.Exist(fileName) Then
+    $db.Databases.Add(fileName)
+    Wait 0.05 ' Pequeña pausa para asegurar creación
+    ' If Error Then
+    '   $logger.Fatal("No se puede crear base de datos: " & Error.Text)
+    '   $db.Close()
+    '   ERROR.Propagate
+    ' Endif
+  Endif
+
+  $db.Close()
+
+  ' Reconectar con el nombre de la BD y crear esquema
+  $db.Name = fileName
+
+  $db.Open()
+  ' If Error Then
+  '   $logger.Fatal("No se puede reabrir BD recién creada: " & Error.Text)
+  '   ERROR.Propagate
+  ' Endif
+
+  $logger.Warning("Creando esquema de tablas para Gacela")
+
+  ' Crear todas las tablas usando el método nativo de Gambas
+  Try CreateSchemaVersionTable()
+  If Error Then ERROR.Propagate
+
+  Try CreatePhotosTable()
+  If Error Then ERROR.Propagate
+
+  Try CreateAlbumsTable()
+  If Error Then ERROR.Propagate
+
+  Try CreatePhotosAlbumsTable()
+  If Error Then ERROR.Propagate
+
+  Try CreateTagsTable()
+  If Error Then ERROR.Propagate
+
+  Try CreatePhotosTagsTable()
+  If Error Then ERROR.Propagate
+
+  Try CreateConfigurationTable()
+  If Error Then ERROR.Propagate
+
+  $db.Close()
+  $logger.Info("Base de datos creada exitosamente")
+
+End
+
+' Conecta a la base de datos existente
+Private Sub ConnectDatabase()
+
+  Dim directoryPath As String = File.Dir($databasePath)
+  Dim fileName As String = File.Name($databasePath)
+
+  $db = New Connection
+  $db.Type = Constants.DB_TYPE
+  $db.Host = directoryPath
+  $db.Name = fileName
+
+  Try $db.Open()
+
+  If Error Then
+    $logger.Fatal("No se pudo conectar a la base de datos: " & Error.Text)
+    ERROR.Propagate
+  Endif
+
+  $logger.Debug("Conexión establecida con: " & directoryPath &/ fileName)
+
+End
+
+' Crea tabla de control de versiones usando método nativo
+Private Sub CreateSchemaVersionTable()
+
+  Dim table As Table
+
+  table = $db.Tables.Add(Constants.TABLE_SCHEMA_VERSION)
+  table.Fields.Add("id", db.Integer)
+  table.Fields.Add("version", db.Integer)
+  table.Fields.Add("applied_date", db.Date)
+  table.Fields.Add("description", db.String, 255)
+  table.PrimaryKey = ["id"]
+  table.Update()
+
+  $logger.Debug("Tabla '" & Constants.TABLE_SCHEMA_VERSION & "' creada")
+
+  ' Insertar versión inicial
+  Try $db.Exec("INSERT INTO " & Constants.TABLE_SCHEMA_VERSION & " (version, applied_date, description) VALUES (?, ?, ?)",
+    Constants.SCHEMA_VERSION, Now(), "Esquema inicial de Gacela v1.0")
+  If Error Then
+    $logger.Error("Error insertando versión inicial: " & Error.Text)
+  Endif
+
+End
+
+' Crea tabla principal de fotos usando método nativo - NUEVA ESTRUCTURA CON BLOBS
+Private Sub CreatePhotosTable()
+
+  Dim table As Table
+
+  table = $db.Tables.Add(Constants.TABLE_PHOTOS)
+  table.Fields.Add("id", db.Integer)
+  table.Fields.Add("file_name", db.String, 255)           ' Nombre original del archivo
+  table.Fields.Add("md5_hash", db.String, 32)             ' Hash MD5 único
+  table.Fields.Add("original_size", db.Long)              ' Tamaño original en bytes
+  table.Fields.Add("compressed_size", db.Long)            ' Tamaño después de compresión
+  table.Fields.Add("width_pixels", db.Integer)            ' Ancho en píxeles
+  table.Fields.Add("height_pixels", db.Integer)           ' Alto en píxeles
+  table.Fields.Add("original_format", db.String, 10)      ' Formato original (jpg, png, etc)
+  table.Fields.Add("creation_date", db.Date)              ' Fecha de creación de la foto
+  table.Fields.Add("import_date", db.Date)                ' Fecha de importación a Gacela
+  table.Fields.Add("description", db.String)              ' Descripción de la foto
+  table.Fields.Add("is_favorite", db.Boolean)             ' Marcada como favorita
+  table.Fields.Add("import_user", db.String, 50)          ' Usuario que la importó
+  table.Fields.Add("active", db.Boolean)                  ' Activa (soft delete)
+  table.Fields.Add("compressed_photo", db.Blob)           ' ← FOTO COMPRIMIDA (BLOB)
+  table.Fields.Add("thumbnail", db.Blob)                  ' ← MINIATURA (BLOB)
+  table.Fields.Add("compression_level", db.Integer)       ' Nivel de compresión aplicado
+  table.PrimaryKey = ["id"]
+  table.Update()
+
+  $logger.Debug("Tabla '" & Constants.TABLE_PHOTOS & "' creada con campos BLOB")
+
+End
+
+' Crea tabla de álbumes
+Private Sub CreateAlbumsTable()
+
+  Dim table As Table
+
+  table = $db.Tables.Add(Constants.TABLE_ALBUMS)
+  table.Fields.Add("id", db.Integer)
+  table.Fields.Add("name", db.String, 255)
+  table.Fields.Add("description", db.String)
+  table.Fields.Add("creation_date", db.Date)
+  table.Fields.Add("creation_user", db.String, 50)
+  table.Fields.Add("cover_photo_id", db.Integer)
+  table.Fields.Add("active", db.Boolean)
+  table.PrimaryKey = ["id"]
+  table.Update()
+
+  $logger.Debug("Tabla '" & Constants.TABLE_ALBUMS & "' creada")
+
+End
+
+' Crea tabla de relación fotos-álbumes
+Private Sub CreatePhotosAlbumsTable()
+
+  Dim table As Table
+
+  table = $db.Tables.Add(Constants.TABLE_PHOTOS_ALBUMS)
+  table.Fields.Add("id", db.Integer)
+  table.Fields.Add("photo_id", db.Integer)
+  table.Fields.Add("album_id", db.Integer)
+  table.Fields.Add("order_in_album", db.Integer)
+  table.Fields.Add("added_date", db.Date)
+  table.PrimaryKey = ["id"]
+  table.Update()
+
+  $logger.Debug("Tabla '" & Constants.TABLE_PHOTOS_ALBUMS & "' creada")
+
+End
+
+' Crea tabla de tags/etiquetas
+Private Sub CreateTagsTable()
+
+  Dim table As Table
+
+  table = $db.Tables.Add(Constants.TABLE_TAGS)
+  table.Fields.Add("id", db.Integer)
+  table.Fields.Add("name", db.String, 100)
+  table.Fields.Add("description", db.String)
+  table.Fields.Add("color", db.String, 7)
+  table.Fields.Add("creation_date", db.Date)
+  table.PrimaryKey = ["id"]
+  table.Update()
+
+  $logger.Debug("Tabla '" & Constants.TABLE_TAGS & "' creada")
+
+End
+
+' Crea tabla de relación fotos-tags
+Private Sub CreatePhotosTagsTable()
+
+  Dim table As Table
+
+  table = $db.Tables.Add(Constants.TABLE_PHOTOS_TAGS)
+  table.Fields.Add("id", db.Integer)
+  table.Fields.Add("photo_id", db.Integer)
+  table.Fields.Add("tag_id", db.Integer)
+  table.Fields.Add("assigned_date", db.Date)
+  table.PrimaryKey = ["id"]
+  table.Update()
+
+  $logger.Debug("Tabla '" & Constants.TABLE_PHOTOS_TAGS & "' creada")
+
+End
+
+' Crea tabla de configuración
+Private Sub CreateConfigurationTable()
+
+  Dim table As Table
+
+  table = $db.Tables.Add(Constants.TABLE_CONFIGURATION)
+  table.Fields.Add("id", db.Integer)
+  table.Fields.Add("key", db.String, 100)
+  table.Fields.Add("value", db.String)
+  table.Fields.Add("description", db.String)
+  table.Fields.Add("modified_date", db.Date)
+  table.PrimaryKey = ["id"]
+  table.Update()
+
+  $logger.Debug("Tabla '" & Constants.TABLE_CONFIGURATION & "' creada")
+
+End
+
+' Crea una clave única basada en timestamp Unix (como tu ejemplo)
+Private Function CreateKey() As Long
+
+  Dim currentDate As Date
+  Dim elapsedTime As Long
+
+  ' Crear timestamp Unix actual
+  currentDate = Now()
+  elapsedTime = DateDiff("1/1/1970", currentDate, gb.Second)
+
+  $logger.Debug("Nueva clave generada: " & elapsedTime)
+
+  Return elapsedTime
+
+End
+
+' Método para obtener estadísticas básicas
+Public Function CountPhotos() As Integer
+
+  Dim result As Result
+  Dim total As Integer = 0
+  '
+  '   Try
+  '   result = $db.Exec("SELECT COUNT(*) as total FROM " & Constants.TABLE_PHOTOS & " WHERE active = ?", True)
+  '   If result.Available Then
+  '     total = result["total"]
+  '   Endif
+  ' Catch
+  '   $logger.Error("Error contando fotos: " & Error.Text)
+  '   End Try
+
+  Return total
+
+End
+
+' Property para acceder a la conexión
+Function DBConnection_Read() As Connection
+
+  Return $db
+
+End
+
+' Método para cerrar conexión
+Public Sub CloseConnection()
+
+  If $db And $db.Opened Then
+    Try $db.Close()
+    $logger.Info("Conexión a base de datos cerrada")
+  Endif
+
+End
+
+' Destructor
+Public Sub _free()
+
+  CloseConnection()
+
+End
