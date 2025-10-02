@@ -3,9 +3,21 @@
 $logger As Log4Gambas3
 $connDb As SQLiteContext
 
-Public Sub Form_Open(logger As Log4Gambas3)
+Public Sub _new(logger As Log4Gambas3)
 
   $logger = logger
   $logger.Debug("en formulario")
+
+End
+
+Public Sub Form_Open()
+
+  $logger.Debug("en formulario open")
+
+End
+
+Public Sub Form_Show()
+
+  $logger.Debug("en formulario show")
 
 End
