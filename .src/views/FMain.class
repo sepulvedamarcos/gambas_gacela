@@ -1,9 +1,9 @@
 ' Gambas class file
 
-$logger As Log4Gambas
+$logger As Log4Gambas3
 $connDb As SQLiteContext
 
-Public Sub Form_Open(logger As Log4Gambas)
+Public Sub Form_Open(logger As Log4Gambas3)
 
   $logger = logger
   $logger.Debug("en formulario")

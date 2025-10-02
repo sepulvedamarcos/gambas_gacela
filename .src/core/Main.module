@@ -1,0 +1,228 @@
+' Gambas module file
+
+' Modulo de inicio de la aplicación Gestor de Álbumes Compartidos en Linux Avanzado
+
+' Constantes de la aplicación
+Private Const DIRECTORIO_GACELA As String = ".config/gacela"
+Private Const BIBLIOTECA_COMPARTIDA As String = "/usr/share/gacela/biblioteca"
+Private Const GRUPO_GACELA As String = "gacela-users"
+
+' Clases para inyección de dependencias (patrón DI manual)
+Private $configuration As Configuration
+Private $log4Gambas As Log4Gambas3
+Private $connDB As SQLiteContext
+' Private $repositorioFotos As PhotoRepository
+' Private $servicioArchivos As FileService
+' Private $biblioteca As Library
+
+Public Sub Main()
+
+  Dim response As Integer
+  Dim formMain As FMain
+
+  $configuration = New Configuration
+  $log4Gambas = $configuration.InitializeLogger()
+
+  If $configuration.IsFirstRun Then
+    ' lanzamos ventana de advertencia para que seleccione como desea iniciar la aplicación
+    response = Message.Warning(("Hemos detectado que la primera vez que ejecuta la aplicación. Debe seleccionar cual de es la configuración con la que desea iniciar. Siempre la puede cambiar en el apartado de configuraciones"), ("Biblioteca privada"), ("Multiusuario"), ("Cancelar"))
+
+    Select Case response
+      Case $configuration.LibraryType_Private
+        $log4Gambas.Debug("Seleccion de biblioteca privada")
+        ' Le indicamos a la clase configuration que cargue ambiente privado
+        $configuration.InitializePrivateSettings()
+
+      Case $configuration.LibraryType_Shared
+        $log4Gambas.Debug("Seleccion de biblioteca multiusuario")
+        ' Le indicamos a la clase configuration que cargue ambiente multiusuario
+        $configuration.InitializeMultiUserSettings()
+
+      Case Else
+        Stop
+    End Select
+
+  Else
+    ' Cargamos el ambiente configurado
+    $configuration.InitializeEnvironment()
+  Endif
+
+  $log4Gambas.Info("Iniciando Gacela v" & Application.Version)
+
+  $connDB = New SQLiteContext($configuration, $log4gambas)
+
+  formMain = New FMain($log4gambas)
+  formMain.Show()
+
+  ' If Error Then
+  '   $log4Gambas.Error("Error fatal en inicialización: " & Error.Text)
+  '   Message.Error("Error al inicializar Gacela:\n" & Error.Text)
+  '   Return
+  ' Endif
+
+  ' Try DeterminarFlujoInicial()
+
+  ' If Error Then
+  '   $log4Gambas.Error("Error en flujo inicial: " & Error.Text)
+  '   Message.Error("Error en la aplicación:\n" & Error.Text)
+  ' Endif
+
+Catch
+  Print "Se detecto un problema grave y se detendra la aplicación" & Error.Text
+
+End
+
+' Inicializa todos los componentes de la aplicación
+' Private Sub initializeApplication()
+'
+'   $log4Gambas.Debug("Iniciando configuración...")
+'
+'   ' 1. Cargar configuración del usuario
+'   Try $configuration.CargarConfiguracion()
+'   If Error Then ERROR.Propagate
+'
+'   ' 2. Verificar/crear directorios necesarios
+'   Try CrearDirectoriosBase()
+'   If Error Then ERROR.Propagate
+'
+'   ' 3. Inicializar contexto de datos según tipo de biblioteca
+'   Try InicializarContextoDatos()
+'   If Error Then ERROR.Propagate
+'
+'   ' 4. Inicializar servicios
+'   ' $servicioArchivos = New ServicioArchivos($configuracion, $log4Gambas)
+'   ' $repositorioFotos = New RepositorioFotos($dataContext.DBConnection, $log4Gambas)
+'   ' $biblioteca = New Biblioteca($repositorioFotos, $servicioArchivos, $log4Gambas)
+'
+'   $log4Gambas.Info("Aplicación inicializada correctamente")
+'
+' End
+
+' Crea los directorios base según el tipo de biblioteca
+' Private Sub CrearDirectoriosBase()
+'
+'   Dim rutaDirectorio As String
+'
+'   If $configuracion.EsBibliotecaPrivada Then
+'     ' Biblioteca privada en directorio del usuario
+'     rutaDirectorio = $configuracion.RutaBibliotecaPrivada
+'     $log4Gambas.Debug("Usando biblioteca privada en: " & rutaDirectorio)
+'   Else
+'     ' Biblioteca compartida
+'     rutaDirectorio = $configuracion.RutaBibliotecaCompartida
+'     $log4Gambas.Debug("Usando biblioteca compartida en: " & rutaDirectorio)
+'
+'     Try VerificarBibliotecaCompartida()
+'     If Error Then ERROR.Propagate
+'   Endif
+'
+'   ' Crear estructura completa de directorios
+'   Try Constantes.CrearEstructuraCompleta(rutaDirectorio, Not $configuracion.EsBibliotecaPrivada)
+'   If Error Then ERROR.Propagate
+'
+' End
+
+' Verifica y configura la biblioteca compartida
+' Private Sub VerificarBibliotecaCompartida()
+'
+'   Dim rutaCompartida As String = $configuracion.RutaBibliotecaCompartida
+'
+'   ' Verificar si el directorio compartido existe
+'   If Not Exist(rutaCompartida) Then
+'     $log4Gambas.Info("Creando biblioteca compartida...")
+'
+'     ' Intentar crear el directorio compartido (requiere permisos)
+'     Try Mkdir rutaCompartida
+'
+'     If Error Then
+'       $log4Gambas.Error("No se puede crear biblioteca compartida: " & Error.Text)
+'
+'       ' Preguntar al usuario si quiere cambiar a biblioteca privada
+'       If Message.Question("No se puede acceder a la biblioteca compartida.\n¿Desea usar una biblioteca privada?", "Sí", "No") = 1 Then
+'         $configuracion.EsBibliotecaPrivada = True
+'         $configuracion.GuardarConfiguracion()
+'         $log4Gambas.Info("Cambiando a biblioteca privada")
+'         ERROR.Clear()
+'         Return
+'       Else
+'         ERROR.Propagate
+'       Endif
+'     Endif
+'   Endif
+'
+'   ' Verificar permisos de escritura
+'   Try VerificarPermisosEscritura(rutaCompartida)
+'   If Error Then ERROR.Propagate
+'
+' End
+'
+' ' Verifica permisos de escritura en un directorio
+' Private Sub VerificarPermisosEscritura(rutaDirectorio As String)
+'
+'   Dim archivoTest As String = rutaDirectorio &/ ".gacela_test"
+'
+'   Try File.Save(archivoTest, "test")
+'
+'   If Error Then
+'     $log4Gambas.Error("Sin permisos de escritura en: " & rutaDirectorio)
+'     ERROR.Propagate
+'   Else
+'     Try Kill archivoTest
+'     $log4Gambas.Debug("Permisos verificados en: " & rutaDirectorio)
+'   Endif
+'
+' End
+'
+' ' Crea un directorio si no existe
+' Private Sub CrearDirectorioSiNoExiste(rutaDirectorio As String)
+'
+'   If Not Exist(rutaDirectorio) Then
+'     $log4Gambas.Debug("Creando directorio: " & rutaDirectorio)
+'     Try Mkdir rutaDirectorio
+'     If Error Then
+'       $log4Gambas.Error("Error creando directorio " & rutaDirectorio & ": " & Error.Text)
+'       ERROR.Propagate
+'     Endif
+'   Endif
+'
+' End
+'
+' ' Inicializa el contexto de datos según configuración
+' Private Sub InicializarContextoDatos()
+'
+'   Dim rutaDB As String
+'
+'   ' Usar el módulo de constantes para obtener la ruta completa
+'   rutaDB = Constants.GetDatabasePath($configuracion)
+'
+'   $log4Gambas.Debug("Inicializando base de datos en: " & rutaDB)
+'
+'   ' Inicializar el módulo SQLiteContext
+'   Try SQLiteContext.Initialize(rutaDB, $log4Gambas)
+'   If Error Then ERROR.Propagate
+'
+' End
+
+' Determina qué formulario mostrar inicialmente
+' Private Sub DeterminarFlujoInicial()
+'
+'   Dim totalFotos As Integer
+'
+'   $log4Gambas.Debug("Determinando flujo inicial...")
+'
+'   Try totalFotos = SQLiteContext.CountPhotos()
+'
+'   If Error Then
+'     $log4Gambas.Error("Error contando fotos: " & Error.Text)
+'     ERROR.Propagate
+'   Endif
+'
+'   If totalFotos = 0 Then
+'     $log4Gambas.Info("Biblioteca vacía, mostrando configuración inicial")
+'     FConfiguracionInicial.Show()
+'   Else
+'     $log4Gambas.Info("Biblioteca con " & totalFotos & " fotos, cargando aplicación")
+'     FCargando.Show()
+'   Endif
+'
+' End

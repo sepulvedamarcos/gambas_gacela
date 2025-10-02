@@ -1,0 +1,233 @@
+' Gambas module file
+
+' Constants Module - Gacela
+' Centralizes all application constants and configurations
+
+' === DATABASE CONFIGURATION ===
+
+' === TABLE NAMES ===
+Public Const TABLE_PHOTOS As String = "photos"
+Public Const TABLE_ALBUMS As String = "albums"
+Public Const TABLE_PHOTOS_ALBUMS As String = "photos_albums"
+Public Const TABLE_TAGS As String = "tags"
+Public Const TABLE_PHOTOS_TAGS As String = "photos_tags"
+Public Const TABLE_CONFIGURATION As String = "configuration"
+Public Const TABLE_SCHEMA_VERSION As String = "schema_version"
+
+' === BASE DIRECTORIES ===
+Public Const GACELA_DIRECTORY As String = ".config/gacela"
+Public Const SHARED_LIBRARY_DEFAULT As String = "/usr/share/gacela/biblioteca"
+
+' === LIBRARY SUBDIRECTORIES ===
+Public Const PHOTOS_DIRECTORY As String = "photos"
+Public Const THUMBNAILS_DIRECTORY As String = "thumbs"
+Public Const TEMP_DIRECTORY As String = "temp"
+Public Const BACKUP_DIRECTORY As String = "backup"
+Public Const IMPORTED_DIRECTORY As String = "imported"
+Public Const CONFIG_DIRECTORY As String = "config"
+Public Const LOGS_DIRECTORY As String = "logs"
+
+' === TEMPORARY SUBDIRECTORIES ===
+Public Const TEMP_IMPORT As String = "import"
+Public Const TEMP_EXPORT As String = "export"
+Public Const TEMP_COMPRESS As String = "compress"
+
+' === FILE CONFIGURATION ===
+Public Const CONFIG_FILE As String = "gacela.conf"
+Public Const LOG_FILE As String = "gacela.log"
+Public Const THUMBNAIL_SUFFIX As String = "_thumb"
+Public Const HASH_SEPARATOR As String = "_"
+
+' === LIMITS AND CONFIGURATIONS ===
+Public Const MAX_FILES_PER_DIRECTORY As Integer = 1000
+Public Const TEMP_CLEANUP_DAYS As Integer = 7
+
+' === SUPPORTED EXTENSIONS ===
+Public IMAGE_EXTENSIONS As String[] = ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp"]
+
+' === DEFAULT CONFIGURATION ===
+Public Const THUMBNAIL_QUALITY_DEFAULT As Integer = 80
+Public Const THUMBNAIL_SIZE_DEFAULT As Integer = 200
+Public Const COMPRESSION_QUALITY_DEFAULT As Integer = 85
+
+' === ERROR MESSAGES ===
+Public Const ERROR_DB_NOT_EXISTS As String = "Database does not exist"
+Public Const ERROR_DB_NO_PERMISSIONS As String = "No permissions to access database"
+Public Const ERROR_DB_CORRUPTED As String = "Database is corrupted"
+
+' Checks if an extension is a valid image
+Public Function IsValidImage(extension As String) As Boolean
+
+  Return IMAGE_EXTENSIONS.Exist(LCase(extension))
+
+End
+
+' Gets file filter for dialogs
+Public Function GetImageFilter() As String
+
+  Dim filters As String[] = New String[]
+
+  For Each ext As String In IMAGE_EXTENSIONS
+    filters.Add("*." & ext)
+    filters.Add("*." & UCase(ext))
+  Next
+
+  Return "Images|" & filters.Join(";") & "|All|*"
+
+End
+
+' === FUNCTIONS FOR DIRECTORY STRUCTURE ===
+
+' Gets the complete path where to store a photo based on its date
+Public Function GetPhotoStoragePath(libraryPath As String, photoDate As Date, md5Hash As String, originalName As String) As String
+
+  Dim photosPath As String = libraryPath &/ PHOTOS_DIRECTORY
+  Dim destinationFolder As String
+
+  ' Determine folder by date
+  If photoDate Then
+    destinationFolder = Format(photoDate, "yyyy") &/ Format(photoDate, "mm")
+  Else
+    destinationFolder = IMPORTED_DIRECTORY
+  Endif
+
+  ' Build filename with hash as prefix
+  Dim fileName As String = md5Hash & HASH_SEPARATOR & File.Name(originalName)
+
+  Return photosPath &/ destinationFolder &/ fileName
+
+End
+
+' Gets the path for the corresponding thumbnail
+Public Function GetThumbnailPath(libraryPath As String, photoDate As Date, md5Hash As String, originalExtension As String) As String
+
+  Dim thumbsPath As String = libraryPath &/ THUMBNAILS_DIRECTORY
+  Dim destinationFolder As String
+
+  ' Determine folder by date (same as original photo)
+  If photoDate Then
+    destinationFolder = Format(photoDate, "yyyy") &/ Format(photoDate, "mm")
+  Else
+    destinationFolder = IMPORTED_DIRECTORY
+  Endif
+
+  ' Thumbnail always in JPG for efficiency
+  Dim thumbName As String = md5Hash & THUMBNAIL_SUFFIX & ".jpg"
+
+  Return thumbsPath &/ destinationFolder &/ thumbName
+
+End
+
+' Creates the necessary directory structure for a specific date
+Public Sub CreateDateStructure(libraryPath As String, photoDate As Date)
+
+  Dim yearFolder As String
+  Dim monthFolder As String
+
+  If photoDate Then
+    yearFolder = Format(photoDate, "yyyy")
+    monthFolder = Format(photoDate, "mm")
+
+    ' Create structure for photos
+    CreateDirectoryIfNotExists(libraryPath &/ PHOTOS_DIRECTORY &/ yearFolder)
+    CreateDirectoryIfNotExists(libraryPath &/ PHOTOS_DIRECTORY &/ yearFolder &/ monthFolder)
+
+    ' Create structure for thumbnails
+    CreateDirectoryIfNotExists(libraryPath &/ THUMBNAILS_DIRECTORY &/ yearFolder)
+    CreateDirectoryIfNotExists(libraryPath &/ THUMBNAILS_DIRECTORY &/ yearFolder &/ monthFolder)
+  Else
+    ' Create directory for imported
+    CreateDirectoryIfNotExists(libraryPath &/ PHOTOS_DIRECTORY &/ IMPORTED_DIRECTORY)
+    CreateDirectoryIfNotExists(libraryPath &/ THUMBNAILS_DIRECTORY &/ IMPORTED_DIRECTORY)
+  Endif
+
+End
+
+' Creates the complete base directory structure for a library
+Public Sub CreateCompleteStructure(libraryPath As String, isShared As Boolean)
+
+  ' Main directories
+  CreateDirectoryIfNotExists(libraryPath)
+  CreateDirectoryIfNotExists(libraryPath &/ PHOTOS_DIRECTORY)
+  CreateDirectoryIfNotExists(libraryPath &/ THUMBNAILS_DIRECTORY)
+  CreateDirectoryIfNotExists(libraryPath &/ TEMP_DIRECTORY)
+  CreateDirectoryIfNotExists(libraryPath &/ BACKUP_DIRECTORY)
+
+  ' Special directories
+  CreateDirectoryIfNotExists(libraryPath &/ PHOTOS_DIRECTORY &/ IMPORTED_DIRECTORY)
+  CreateDirectoryIfNotExists(libraryPath &/ THUMBNAILS_DIRECTORY &/ IMPORTED_DIRECTORY)
+
+  ' Temporary subdirectories
+  CreateDirectoryIfNotExists(libraryPath &/ TEMP_DIRECTORY &/ TEMP_IMPORT)
+  CreateDirectoryIfNotExists(libraryPath &/ TEMP_DIRECTORY &/ TEMP_EXPORT)
+  CreateDirectoryIfNotExists(libraryPath &/ TEMP_DIRECTORY &/ TEMP_COMPRESS)
+
+  ' If shared library, create additional structure
+  If isShared Then
+    CreateDirectoryIfNotExists(libraryPath &/ CONFIG_DIRECTORY)
+    CreateDirectoryIfNotExists(libraryPath &/ LOGS_DIRECTORY)
+    CreateDirectoryIfNotExists(libraryPath &/ LOGS_DIRECTORY &/ "users")
+  Endif
+
+End
+
+' Helper function to create directories
+Private Sub CreateDirectoryIfNotExists(directoryPath As String)
+
+  If Not Exist(directoryPath) Then
+    Try Mkdir directoryPath
+    If Error Then
+      Error.Raise("Cannot create directory: " & directoryPath & " - " & Error.Text)
+    Endif
+  Endif
+
+End
+
+' Gets temporary file path for an operation
+Public Function GetTemporaryPath(libraryPath As String, operationType As String, fileName As String) As String
+
+  Dim tempPath As String = libraryPath &/ TEMP_DIRECTORY &/ operationType
+
+  Return tempPath &/ fileName & "_" & Format(Now(), "yyyymmdd_hhnnss")
+
+End
+
+' Cleans old temporary files
+Public Sub CleanTemporaries(libraryPath As String, Optional daysOld As Integer = TEMP_CLEANUP_DAYS)
+
+  Dim tempPath As String = libraryPath &/ TEMP_DIRECTORY
+  Dim limitDate As Date = DateAdd(Now(), gb.Day, -daysOld)
+
+  Try CleanDirectoryRecursive(tempPath, limitDate)
+
+End
+
+' Helper function for recursive cleanup
+Private Sub CleanDirectoryRecursive(directoryPath As String, limitDate As Date)
+
+  Dim files As String[]
+  Dim fileName As String
+  Dim fullPath As String
+  Dim fileDate As Date
+
+  If Not Exist(directoryPath) Then Return
+
+  Try files = Dir(directoryPath)
+  If Error Then Return
+
+  For Each fileName In files
+    fullPath = directoryPath &/ fileName
+
+    If IsDir(fullPath) Then
+      ' Recursion in subdirectories
+      CleanDirectoryRecursive(fullPath, limitDate)
+    Else
+      ' Check file date
+      Try fileDate = Stat(fullPath).LastModified
+      If Not Error And fileDate < limitDate Then
+        Try Kill fullPath
+      Endif
+    Endif
+  Next
+
+End
