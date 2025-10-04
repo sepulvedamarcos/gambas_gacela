@@ -11,7 +11,7 @@ Private Const GRUPO_GACELA As String = "gacela-users"
 Private $configuration As Configuration
 Private $log4Gambas As Log4Gambas3
 Private $connDB As SQLiteContext
-' Private $repositorioFotos As PhotoRepository
+Private $photorepository As PhotoRepository
 ' Private $servicioArchivos As FileService
 ' Private $biblioteca As Library
 
@@ -50,8 +50,9 @@ Public Sub Main()
   $log4Gambas.Info("Iniciando Gacela v" & Application.Version)
 
   $connDB = New SQLiteContext($configuration, $log4gambas)
+  $photorepository = New PhotoRepository($log4Gambas, $connDB, $configuration)
 
-  formMain = New FMain($log4gambas)
+  formMain = New FMain($log4gambas, $photorepository)
   formMain.Show()
 
 Catch

@@ -7,6 +7,7 @@
 Private Const GLOBAL_VERSION As String = "Global/Version"
 Private Const GLOBAL_LIBRARY_TYPE As String = "Global/LibraryType"
 Private Const GLOBAL_LIBRARY_DIRECTORY As String = "Global/LibraryDirectory"
+Private Const GLOBAL_LIBRARY_PHOTOS_PER_VIEW As String = "Global/PhotosPerView"
 
 ' Constantes que definen la seccion de Log4Gambas
 Private Const LOG4GAMBAS_LEVEL As String = "Log4Gambas/Level"

@@ -1,6 +1,6 @@
 ' Gambas class file
 
-' Gambas class file - PhotoModel
+' Gambas class file - PhotoEntity
 ' Modelo de dominio para representar una foto en Gacela
 
 ' Propiedades privadas del modelo
@@ -17,29 +17,40 @@ Private $importDate As Date
 Private $description As String = ""
 Private $isFavorite As Boolean = False
 Private $importUser As String = ""
-Private $active As Boolean = True
+Private $softDelete As Boolean = False
 Private $compressedPhoto As Byte[]
 Private $thumbnail As Byte[]
 Private $compressionLevel As Integer = 0
 
-' Constructor único
-Public Sub _new(Optional fileName As String = "", Optional md5Hash As String = "", Optional originalSize As Long = 0)
+' =============================================
+'
+'            PROPIEDADES PÚBLICAS
+'
+'==============================================
+Property Id As Integer' ID único de la foto
+Property FileName As String' Nombre del archivo original
+Property MD5Hash As String' Hash MD5 único
+Property OriginalSize As Long' Tamaño original en bytes
+Property CompressedSize As Long' Tamaño después de compresión en bytes
+Property WidthPixels As Integer' Ancho en píxeles
+Property CreationDate As Date' Fecha de creación de la foto (desde metadatos EXIF)
+Property Description As String' Descripción de la foto
+Property IsFavorite As Boolean' Marcada como favorita
+Property SoftDelete As Boolean' Estado activo (soft delete)
+Property HeightPixels As Integer' Alto en píxeles
+Property OriginalFormat As String' Formato original (jpg, png, etc)
+Property ImportDate As Date' Fecha de importación a Gacela
+Property ImportUser As String' Usuario que importó la foto
+Property Thumbnail As Byte[]' Miniatura como array de bytes
+Property CompressedPhoto As Byte[]' Foto comprimida como array de bytes
+Property Read SpaceSaving As Float' Obtiene el ahorro de espacio
+Property Read CompressionRatio As Float' Obtiene el ratio de compresión
 
-  ' Inicializar fechas por defecto
-  $importDate = Now()
-  $importUser = System.User.Name
-
-  ' Asignar parámetros si se proporcionan
-  If fileName <> "" Then $fileName = fileName
-  If md5Hash <> "" Then $md5Hash = md5Hash
-  If originalSize > 0 Then $originalSize = originalSize
-
-End
-
-' === PROPIEDADES PÚBLICAS ===
-
-' ID único de la foto
-Property Id As Integer
+'=================================================
+'
+'        Getters and Setters
+'
+'=================================================
 
 Function Id_Read() As Integer
 
@@ -53,9 +64,6 @@ Sub Id_Write(value As Integer)
 
 End
 
-' Nombre del archivo original
-Property FileName As String
-
 Function FileName_Read() As String
 
   Return $fileName
@@ -67,9 +75,6 @@ Sub FileName_Write(value As String)
   $fileName = value
 
 End
-
-' Hash MD5 único
-Property MD5Hash As String
 
 Function MD5Hash_Read() As String
 
@@ -83,9 +88,6 @@ Sub MD5Hash_Write(value As String)
 
 End
 
-' Tamaño original en bytes
-Property OriginalSize As Long
-
 Function OriginalSize_Read() As Long
 
   Return $originalSize
@@ -97,9 +99,6 @@ Sub OriginalSize_Write(value As Long)
   $originalSize = value
 
 End
-
-' Tamaño después de compresión en bytes
-Property CompressedSize As Long
 
 Function CompressedSize_Read() As Long
 
@@ -113,9 +112,6 @@ Sub CompressedSize_Write(value As Long)
 
 End
 
-' Ancho en píxeles
-Property WidthPixels As Integer
-
 Function WidthPixels_Read() As Integer
 
   Return $widthPixels
@@ -127,9 +123,6 @@ Sub WidthPixels_Write(value As Integer)
   $widthPixels = value
 
 End
-
-' Alto en píxeles
-Property HeightPixels As Integer
 
 Function HeightPixels_Read() As Integer
 
@@ -143,9 +136,6 @@ Sub HeightPixels_Write(value As Integer)
 
 End
 
-' Formato original (jpg, png, etc)
-Property OriginalFormat As String
-
 Function OriginalFormat_Read() As String
 
   Return $originalFormat
@@ -157,9 +147,6 @@ Sub OriginalFormat_Write(value As String)
   $originalFormat = LCase(value)
 
 End
-
-' Fecha de creación de la foto (desde metadatos EXIF)
-Property CreationDate As Date
 
 Function CreationDate_Read() As Date
 
@@ -173,9 +160,6 @@ Sub CreationDate_Write(value As Date)
 
 End
 
-' Fecha de importación a Gacela
-Property ImportDate As Date
-
 Function ImportDate_Read() As Date
 
   Return $importDate
@@ -187,9 +171,6 @@ Sub ImportDate_Write(value As Date)
   $importDate = value
 
 End
-
-' Descripción de la foto
-Property Description As String
 
 Function Description_Read() As String
 
@@ -203,9 +184,6 @@ Sub Description_Write(value As String)
 
 End
 
-' Marcada como favorita
-Property IsFavorite As Boolean
-
 Function IsFavorite_Read() As Boolean
 
   Return $isFavorite
@@ -217,9 +195,6 @@ Sub IsFavorite_Write(value As Boolean)
   $isFavorite = value
 
 End
-
-' Usuario que importó la foto
-Property ImportUser As String
 
 Function ImportUser_Read() As String
 
@@ -233,23 +208,17 @@ Sub ImportUser_Write(value As String)
 
 End
 
-' Estado activo (soft delete)
-Property Active As Boolean
+Function SoftDelete_Read() As Boolean
 
-Function Active_Read() As Boolean
-
-  Return $active
+  Return $softDelete
 
 End
 
-Sub Active_Write(value As Boolean)
+Sub SoftDelete_Write(value As Boolean)
 
-  $active = value
+  $SoftDelete = value
 
 End
-
-' Foto comprimida como array de bytes
-Property CompressedPhoto As Byte[]
 
 Function CompressedPhoto_Read() As Byte[]
 
@@ -265,9 +234,6 @@ Sub CompressedPhoto_Write(value As Byte[])
   Endif
 
 End
-
-' Miniatura como array de bytes
-Property Thumbnail As Byte[]
 
 Function Thumbnail_Read() As Byte[]
 
@@ -300,9 +266,6 @@ End
 
 ' === PROPIEDADES DE SOLO LECTURA ===
 
-' Obtiene el ratio de compresión
-Property Read CompressionRatio As Float
-
 Function CompressionRatio_Read() As Float
 
   If $originalSize > 0 And $compressedSize > 0 Then
@@ -312,9 +275,6 @@ Function CompressionRatio_Read() As Float
   Endif
 
 End
-
-' Obtiene el ahorro de espacio
-Property Read SpaceSaving As Float
 
 Function SpaceSaving_Read() As Float
 
@@ -394,87 +354,6 @@ Private Function FormatSize(sizeBytes As Long) As String
   Else
     Return Format(size, "0.00") & " " & units[unitIndex]
   Endif
-
-End
-
-' Valida que el modelo tenga datos mínimos requeridos
-Public Function IsValid() As Boolean
-
-  ' Verificar campos obligatorios
-  If $fileName = "" Then Return False
-  If $md5Hash = "" Then Return False
-  If $originalSize <= 0 Then Return False
-  If $originalFormat = "" Then Return False
-
-  ' Verificar que el hash MD5 tenga 32 caracteres
-  If $md5Hash.Length <> 32 Then Return False
-
-  ' Verificar que el formato sea válido
-  If Not Constants.IsValidImage($originalFormat) Then Return False
-
-  Return True
-
-End
-
-' Clona el modelo (copia profunda)
-Public Function Clone() As PhotoModel
-
-  Dim clonedPhoto As New PhotoModel
-
-  ' Copiar todas las propiedades primitivas
-  clonedPhoto.Id = $id
-  clonedPhoto.FileName = $fileName
-  clonedPhoto.MD5Hash = $md5Hash
-  clonedPhoto.OriginalSize = $originalSize
-  clonedPhoto.CompressedSize = $compressedSize
-  clonedPhoto.WidthPixels = $widthPixels
-  clonedPhoto.HeightPixels = $heightPixels
-  clonedPhoto.OriginalFormat = $originalFormat
-  clonedPhoto.CreationDate = $creationDate
-  clonedPhoto.ImportDate = $importDate
-  clonedPhoto.Description = $description
-  clonedPhoto.IsFavorite = $isFavorite
-  clonedPhoto.ImportUser = $importUser
-  clonedPhoto.Active = $active
-  clonedPhoto.CompressionLevel = $compressionLevel
-
-  ' Copiar arrays de bytes si existen
-  If $compressedPhoto Then
-    clonedPhoto.$compressedPhoto = $compressedPhoto.Copy()
-  Endif
-
-  If $thumbnail Then
-    clonedPhoto.$thumbnail = $thumbnail.Copy()
-  Endif
-
-  Return clonedPhoto
-
-End
-
-' Compara si dos modelos son equivalentes (sin incluir ID)
-Public Function Equals(otherPhoto As PhotoModel) As Boolean
-
-  If otherPhoto = Null Then Return False
-
-  Return $md5Hash = otherPhoto.MD5Hash And
-    $fileName = otherPhoto.FileName And
-    $originalSize = otherPhoto.OriginalSize
-
-End
-
-' Obtiene una representación en texto del modelo
-Public Function ToString() As String
-
-  Dim info As String = "PhotoModel: "
-
-  info &= "ID=" & $id & ", "
-  info &= "File=" & $fileName & ", "
-  info &= "Hash=" & Left($md5Hash, 8) & "..., "
-  info &= "Size=" & $originalSize & ", "
-  info &= "Dims=" & Me.Dimensions & ", "
-  info &= "Format=" & UCase($originalFormat)
-
-  Return info
 
 End
 

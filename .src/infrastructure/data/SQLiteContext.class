@@ -111,6 +111,9 @@ Private Sub CreateDatabase()
   Try CreatePhotosTagsTable()
   If Error Then ERROR.Propagate
 
+  Try InsertSeedData()
+  If Error Then ERROR.Propagate
+
   $db.Close()
   $log4gambas.Info("Base de datos creada exitosamente")
 
@@ -141,7 +144,7 @@ Private Sub CreatePhotosTable()
   Dim table As Table
 
   table = $db.Tables.Add($configuration.TABLE_PHOTOS)
-  table.Fields.Add("id", db.Integer)                      ' identioficador del registro
+  table.Fields.Add("id", db.Long)                         ' identificador del registro
   table.Fields.Add("file_name", db.String, 255)           ' Nombre original del archivo
   table.Fields.Add("md5_hash", db.String, 32)             ' Hash MD5 único
   table.Fields.Add("original_size", db.Long)              ' Tamaño original en bytes
@@ -220,7 +223,7 @@ Private Sub CreateTagsTable()
   table.PrimaryKey = ["id"]
   table.Update()
 
-  $log4gambas.Debug("Tabla '" & Constants.TABLE_TAGS & "' creada")
+  $log4gambas.Debug("Tabla '" & $configuration.TABLE_TAGS & "' creada")
 
 End
 
@@ -297,5 +300,142 @@ End
 Public Sub _free()
 
   CloseConnection()
+
+End
+
+' Método para insertar datos de prueba en la tabla photos
+Private Sub InsertSeedData()
+
+  $log4gambas.Info("Insertando datos de prueba en tabla photos...")
+
+  Try InsertDummyPhoto1()
+  If Error Then
+    $log4gambas.Error("Error insertando foto de prueba 1: " & Error.Text)
+  Endif
+  Wait 1
+  Try InsertDummyPhoto2()
+  If Error Then
+    $log4gambas.Error("Error insertando foto de prueba 2: " & Error.Text)
+  Endif
+
+  $log4gambas.Info("Datos de prueba insertados exitosamente")
+
+End
+
+' Inserta primera foto de prueba (imagen roja)
+Private Sub InsertDummyPhoto1()
+
+  Dim result As Result
+  Dim dummyImage As Image
+  Dim dummyThumbnail As Image
+  Dim compressedPhoto As Byte[]
+  Dim thumbnail As Byte[]
+
+  ' Crear imagen dummy de 100x100 roja
+  dummyImage = New Image(100, 100, Color.Red)
+
+  ' Crear thumbnail dummy de 50x50 roja
+  dummyThumbnail = New Image(50, 50, Color.Red)
+
+  ' Convertir a bytes (JPEG)
+  ' compressedPhoto = ImageToBytes(dummyImage, 85)
+  ' thumbnail = ImageToBytes(dummyThumbnail, 80)
+
+  ' Insertar registro usando método nativo
+  result = $db.Create($configuration.TABLE_PHOTOS)
+  result["id"] = CreateKey()
+  result["file_name"] = "foto_prueba_1.jpg"
+  result["md5_hash"] = "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+  result["original_size"] = 15000
+  result["compressed_size"] = 1
+  result["width_pixels"] = 100
+  result["height_pixels"] = 100
+  result["original_format"] = "jpg"
+  result["creation_date"] = DateAdd(Now(), gb.Day, -30) ' Hace 30 días
+  result["import_date"] = Now()
+  result["description"] = "Foto de prueba 1 - Imagen roja de demostración"
+  result["is_favorite"] = True
+  result["import_user"] = User.Name
+  result["soft_delete"] = False
+  ' result["compressed_photo"] =
+  ' result["thumbnail"] = Null
+  result["compression_level"] = 85
+  result["last_sync_date"] = Now()
+  result.Update()
+
+  $log4gambas.Debug("Foto de prueba 1 insertada con ID: " & result["id"])
+
+End
+
+' Inserta segunda foto de prueba (imagen azul)
+Private Sub InsertDummyPhoto2()
+
+  Dim result As Result
+  Dim dummyImage As Image
+  Dim dummyThumbnail As Image
+  Dim compressedPhoto As Byte[]
+  Dim thumbnail As Byte[]
+
+  ' Crear imagen dummy de 150x150 azul
+  dummyImage = New Image(150, 150, Color.Blue)
+
+  ' Crear thumbnail dummy de 50x50 azul
+  dummyThumbnail = New Image(50, 50, Color.Blue)
+
+  ' Convertir a bytes (JPEG)
+  ' compressedPhoto = ImageToBytes(dummyImage, 85)
+  ' thumbnail = ImageToBytes(dummyThumbnail, 80)
+
+  ' Insertar registro usando método nativo
+  result = $db.Create($configuration.TABLE_PHOTOS)
+  result["id"] = CreateKey()
+  result["file_name"] = "foto_prueba_2.jpg"
+  result["md5_hash"] = "z9y8x7w6v5u4t3s2r1q0p9o8n7m6l5k4"
+  result["original_size"] = 22000
+  result["compressed_size"] = Null
+  result["width_pixels"] = 150
+  result["height_pixels"] = 150
+  result["original_format"] = "jpg"
+  result["creation_date"] = DateAdd(Now(), gb.Day, -15) ' Hace 15 días
+  result["import_date"] = Now()
+  result["description"] = "Foto de prueba 2 - Imagen azul de demostración"
+  result["is_favorite"] = False
+  result["import_user"] = User.Name
+  result["soft_delete"] = False
+  result["compressed_photo"] = Null
+  result["thumbnail"] = Null
+  result["compression_level"] = 85
+  result["last_sync_date"] = Now()
+  result.Update()
+
+  $log4gambas.Debug("Foto de prueba 2 insertada con ID: " & result["id"])
+
+End
+
+' Función auxiliar para convertir Image a Bytes (JPEG)
+Private Function ImageToBytes(img As Image, quality As Integer) As Byte[]
+
+  Dim im As ImageView
+  Dim tempFile As String
+  Dim imageBytes As Byte[]
+  Dim hFile As File
+
+  ' Crear archivo temporal
+  'tempFile = Temp() & ".jpg"
+  tempFile = "/home/marcos/Desarrollo/4139948.png"
+
+  ' Abrir el archivo en modo binario
+  im = New ImageView(tempFile)
+
+  ' Limpiar archivo temporal
+  Try Kill tempFile
+
+  Return imageBytes
+
+Catch
+  ' Limpiar en caso de error
+  ' Try Kill tempFile
+  $log4gambas.Error("Error convirtiendo imagen a bytes: " & Error.Text)
+  Return Null
 
 End

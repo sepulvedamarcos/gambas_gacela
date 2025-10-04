@@ -1,23 +1,53 @@
 ' Gambas class file
 
-$logger As Log4Gambas3
-$connDb As SQLiteContext
+Private $log4Gambas As Log4Gambas3
+Private $photoRepository As PhotoRepository
+Private $photos As PhotoEntity[]
 
-Public Sub _new(logger As Log4Gambas3)
+Public Sub _new(logger As Log4Gambas3, repository As PhotoRepository)
 
-  $logger = logger
-  $logger.Debug("en formulario")
+  $log4Gambas = logger
+  $log4Gambas.Debug("en formulario")
+
+  $photoRepository = repository
+  $photos = $photoRepository.getPhotos()
 
 End
 
 Public Sub Form_Open()
 
-  $logger.Debug("en formulario open")
+  Dim photo As PhotoEntity
+  Dim PanelPhoto As Panel
+  Dim formphoto As FPhoto
+
+  $log4Gambas.Debug("en formulario open")
+
+  For Each photo In $photos
+    PanelPhoto = New Panel(PanelDespliegue)
+    PanelPhoto.Width = 180
+    PanelPhoto.Height = 180
+    PanelPhoto.Border = Border.Solid
+    PanelPhoto.Background = Color.Blue
+    PanelPhoto.Show()
+
+    formphoto = New FPhoto(photo, PanelPhoto)
+
+  Next
 
 End
 
 Public Sub Form_Show()
 
-  $logger.Debug("en formulario show")
+  $log4Gambas.Debug("en formulario show")
+
+End
+
+Public Sub PanelIzquierdo_MouseDown()
+
+End
+
+Public Sub ButtonBox1_Click()
+
+  Message.Info("hola")
 
 End

@@ -1,0 +1,13 @@
+' Gambas class file
+
+Private $photo As PhotoEntity
+
+Public Sub _new(photo As PhotoEntity)
+
+  $photo = photo
+
+End
+
+Public Sub Form_Open()
+
+End

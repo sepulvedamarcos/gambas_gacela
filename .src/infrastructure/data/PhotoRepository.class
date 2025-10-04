@@ -1,1 +1,101 @@
 ' Gambas class file
+
+Private $log4Gambas As Log4Gambas3
+Private $dbContext As SQLiteContext
+Private $configuration As Configuration
+
+Public Sub _new(logger As Log4Gambas3, context As SQLiteContext, configuration As Configuration)
+
+  $log4Gambas = logger
+  $dbContext = context
+  $configuration = configuration
+
+End
+
+Public Function getPhotos(Optional id As Integer) As PhotoEntity[]
+
+  Dim photo As PhotoEntity
+  Dim photos As PhotoEntity[]
+  Dim photoResult As Result
+  Dim query As String
+
+  $log4Gambas.Debug("Extraccion de fotos")
+
+  query = "soft_delete = &1"
+  If id > 0 Then
+    query = "AND id = " & id
+  End If
+
+  photoResult = $dbContext.DBConnection.Find($configuration.TABLE_PHOTOS, query, False)
+
+  If photoResult.Available Then
+    $log4Gambas.Debug("Extraccion de " & photoResult.Count & " fotos de la respuesta")
+
+    Return MapResultToEntity(photoResult)
+
+  Endif
+
+Catch
+  $log4Gambas.Error("Problemas para recuperar las fotos " & Error.Text)
+
+End
+
+' Mapeo privado dentro del Repository
+Private Function MapResultToEntity(result As Result) As PhotoEntity[]
+
+  Dim photo As PhotoEntity
+  Dim photos As New PhotoEntity[]
+
+  For Each Result
+    photo = New PhotoEntity
+
+    ' Mapear todos los campos
+    photo.Id = result["id"]
+    photo.FileName = result["file_name"]
+    ' photo.MD5Hash = result["md5_hash"]
+    ' photo.OriginalSize = result["original_size"]
+    ' photo.CompressedSize = result["compressed_size"]
+    ' photo.WidthPixels = result["width_pixels"]
+    ' photo.HeightPixels = result["height_pixels"]
+    ' photo.OriginalFormat = result["original_format"]
+    photo.CreationDate = result["creation_date"]
+    ' photo.ImportDate = result["import_date"]
+    photo.Description = result["description"]
+    ' photo.IsFavorite = result["is_favorite"]
+    ' photo.ImportUser = result["import_user"]
+    ' photo.SoftDelete = Not result["soft_delete"]
+    ' photo.CompressedPhoto = result["compressed_photo"]
+    ' photo.Thumbnail = result["thumbnail"]
+    ' photo.CompressionLevel = result["compression_level"]
+    ' photo.LastSyncDate = result["last_sync_date"]
+
+    photos.Add(photo)
+
+  Next
+
+  Return photos
+
+End
+
+' Mapeo privado Entity → Result
+Private Sub MapEntityToResult(photo As PhotoEntity, result As Result)
+
+  result["file_name"] = photo.FileName
+  result["md5_hash"] = photo.MD5Hash
+  result["original_size"] = photo.OriginalSize
+  result["compressed_size"] = photo.CompressedSize
+  result["width_pixels"] = photo.WidthPixels
+  result["height_pixels"] = photo.HeightPixels
+  result["original_format"] = photo.OriginalFormat
+  result["creation_date"] = photo.CreationDate
+  result["import_date"] = photo.ImportDate
+  result["description"] = photo.Description
+  result["is_favorite"] = photo.IsFavorite
+  result["import_user"] = photo.ImportUser
+  result["soft_delete"] = Not photo.SoftDelete
+  result["compressed_photo"] = photo.CompressedPhoto
+  result["thumbnail"] = photo.Thumbnail
+  result["compression_level"] = photo.CompressionLevel
+  result["last_sync_date"] = photo.LastSyncDate
+
+End

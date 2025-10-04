@@ -1,5 +1,76 @@
 # Gambas Form File 3.0
 
 { Form Form
-  MoveScaled(0,0,64,64)
+  MoveScaled(0,0,149,87)
+  Expand = True
+  Centered = True
+  { HBox1 HBox
+    MoveScaled(1,2,125,72)
+    Expand = True
+    Spacing = True
+    Padding = 4
+    { PanelIzquierdo Panel
+      MoveScaled(1,1,27,69)
+      Background = Color.LightForeground
+      { Label2 Label
+        MoveScaled(1,2,13,3)
+        Font = Font["Ubuntu Sans,+2"]
+        Text = ("Libreria")
+      }
+      { Label3 Label
+        MoveScaled(3,6,15,4)
+        Mouse = Cursor.Pointing
+        Border = Border.Plain
+        BorderWidth = 1
+        BorderRadius = 7
+        BorderColor = &HFF0000
+        Text = ("Personal")
+      }
+      { Label4 Label
+        MoveScaled(4,11,12,3)
+        Text = ("Compartida")
+      }
+      { Label5 Label
+        MoveScaled(2,16,13,3)
+        Font = Font["Ubuntu Sans,+2"]
+        Text = ("Grupos")
+      }
+      { Label6 Label
+        MoveScaled(2,41,13,3)
+        Font = Font["Ubuntu Sans,+2"]
+        Text = ("Tags")
+      }
+    }
+    { PanelDerecho VBox
+      MoveScaled(29,1,92,69)
+      Background = Color.LightForeground
+      Padding = 10
+      { PanelBusqueda Panel
+        MoveScaled(1,1,90,7)
+        Background = &HA7C3E0
+        Arrangement = Arrange.Horizontal
+        Padding = 8
+        { Label1 Label
+          MoveScaled(2,2,27,3)
+          Text = ("Photos en xxxx GRoup")
+        }
+        { ButtonBox1 ButtonBox
+          MoveScaled(33,1,56,5)
+          Expand = True
+          Direction = Direction.LeftToRight
+          Picture = Picture["icon:/medium/find"]
+          ClearButton = True
+        }
+      }
+      { PanelDespliegue Panel
+        MoveScaled(1,10,87,57)
+        Background = &HC0C0C0
+        Arrangement = Arrange.Row
+      }
+    }
+  }
+  { PanelPaso Panel
+    MoveScaled(127,2,21,72)
+    Arrangement = Arrange.Vertical
+  }
 }
