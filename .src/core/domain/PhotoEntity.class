@@ -18,8 +18,8 @@ Private $description As String = ""
 Private $isFavorite As Boolean = False
 Private $importUser As String = ""
 Private $softDelete As Boolean = False
-Private $compressedPhoto As Byte[]
-Private $thumbnail As Byte[]
+Private $compressedPhoto As String
+Private $thumbnail As String
 Private $compressionLevel As Integer = 0
 
 ' =============================================
@@ -41,8 +41,8 @@ Property HeightPixels As Integer' Alto en píxeles
 Property OriginalFormat As String' Formato original (jpg, png, etc)
 Property ImportDate As Date' Fecha de importación a Gacela
 Property ImportUser As String' Usuario que importó la foto
-Property Thumbnail As Byte[]' Miniatura como array de bytes
-Property CompressedPhoto As Byte[]' Foto comprimida como array de bytes
+Property Thumbnail As String' Miniatura como array de bytes
+Property CompressedPhoto As String' Foto comprimida como array de bytes
 Property Read SpaceSaving As Float' Obtiene el ahorro de espacio
 Property Read CompressionRatio As Float' Obtiene el ratio de compresión
 
@@ -220,28 +220,25 @@ Sub SoftDelete_Write(value As Boolean)
 
 End
 
-Function CompressedPhoto_Read() As Byte[]
+Function CompressedPhoto_Read() As String
 
   Return $compressedPhoto
 
 End
 
-Sub CompressedPhoto_Write(value As Byte[])
+Sub CompressedPhoto_Write(value As String)
 
   $compressedPhoto = value
-  If $compressedPhoto Then
-    $compressedSize = $compressedPhoto.Length
-  Endif
 
 End
 
-Function Thumbnail_Read() As Byte[]
+Function Thumbnail_Read() As String
 
   Return $thumbnail
 
 End
 
-Sub Thumbnail_Write(value As Byte[])
+Sub Thumbnail_Write(value As String)
 
   $thumbnail = value
 

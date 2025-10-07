@@ -8,6 +8,7 @@ Private Const GLOBAL_VERSION As String = "Global/Version"
 Private Const GLOBAL_LIBRARY_TYPE As String = "Global/LibraryType"
 Private Const GLOBAL_LIBRARY_DIRECTORY As String = "Global/LibraryDirectory"
 Private Const GLOBAL_LIBRARY_PHOTOS_PER_VIEW As String = "Global/PhotosPerView"
+Private Const GLOBAL_APPLICATION_THEME As String = "Global/Theme"
 
 ' Constantes que definen la seccion de Log4Gambas
 Private Const LOG4GAMBAS_LEVEL As String = "Log4Gambas/Level"
@@ -23,6 +24,7 @@ Private Const DB_TYPE As String = "Database/Type"
 
 Public Const DATABASE_NAME As String = "gacela.db"
 Public Const TYPE_SQLITE3 As String = "sqlite3"
+
 Public Const TABLE_PHOTOS As String = "photos"
 Public Const TABLE_ALBUMS As String = "albums"
 Public Const TABLE_PHOTOS_ALBUMS As String = "photo_albums"
@@ -30,14 +32,22 @@ Public Const TABLE_TAGS As String = "tags"
 Public Const TABLE_PHOTOS_TAGS As String = "photos_tags"
 
 Private Const PATH_APP_MULTI As String = "/usr/share/gacela"
+
 ' Enumeración para tipos de biblioteca
-Public Enum LibraryType_Private = 1               '' Enum indica que colección es privada
-Public Enum LibraryType_Shared = 2                '' Enum indica que colección es compartida
+Public Enum LibraryType_Private = 1                 '' Enum indica que colección es privada
+Public Enum LibraryType_Shared = 2                  '' Enum indica que colección es compartida
+
+' Enumeracion para indicar tipo de tema a usar
+Public Enum APP_THEME_SO = 1                        '' Enum para indicar que se usara el thema del Sistema Operativo
+Public Enum APP_THEME_LIGHT = 2                     '' Enum para indicar que se usara el thema Light siempre
+Public Enum APP_THEME_DARK = 3                      '' Enum para indicar que se usara el thema Dark siempre
+
 ' Enumeración para formatos de exportación
 ' Public Enum ExportFormat_Original = 0
 ' Public Enum ExportFormat_JPEG_High = 1
 ' Public Enum ExportFormat_JPEG_Medium = 2
 ' Public Enum ExportFormat_PNG = 3
+
 ' Variable privadas
 Private $settings As Settings                       '' Objeto que referencia al archivo de settings
 Private $isFirstRun As Boolean = False              '' Indicador de primera ejecucion
@@ -45,13 +55,21 @@ Private $useLibrary As Integer = 1                  '' Indicador de tipo de libr
 Private $appPath As String                          '' Ruta de los archivos de la aplicación
 Private $configName As String = "gacela.conf"       '' Nomrbe del arvhivo de settings
 Private $libraryName As String = "gacela.db"        '' Nombre del archivo de SQLite3
-Private $dbType As String                          '' Tipo de Bd datos por ahora SQLite3
-Private $log4gambas3 As New Log4Gambas3             ''Objeto para hacer logger
+Private $dbType As String                           '' Tipo de Bd datos por ahora SQLite3
+Private $log4gambas3 As New Log4Gambas3             '' Objeto para hacer logger
+Private $soTheme As Integer                         '' Indica el tema activo del SO
+Private $appTheme As Integer                        '' Indica el tema que usa la aplicacion
+
 ' Propiedades
 Property Read IsFirstRun As Boolean                 '' Indicador de primera ejecución
 Property Read LibraryPathName As String             '' Indica la ruta donde se alojan los archivos de la aplicacion
 
-' Constructor
+'============================================
+'
+'      Métodos publicos
+'
+'============================================
+
 Public Sub _new()
 
   $settings = New Settings(User.Home &/ ".config/gacela/gacela.conf")
@@ -66,6 +84,8 @@ End
 
 Public Sub InitializeEnvironment() ''Inicializa segun lo que esta previamente definido
 
+  $log4gambas3.warning("Inicializando entorno")
+
   If $settings[GLOBAL_LIBRARY_TYPE, Null] = Null Then
     Error.Raise("Problemas al cargar configuraciones iniciales")
   Else
@@ -73,19 +93,22 @@ Public Sub InitializeEnvironment() ''Inicializa segun lo que esta previamente de
     $appPath = $settings[GLOBAL_LIBRARY_DIRECTORY]
     $libraryName = $settings[DB_DATABASE_NAME]
     $dbType = $settings[DB_TYPE]
-
+    $soTheme = FindSOTheme()
+    $appTheme = $settings[GLOBAL_APPLICATION_THEME, APP_THEME_SO]
   Endif
 
 End
 
 Public Sub InitializePrivateSettings() '' Inicializa y valida la estructura de Settings privada
 
-  $log4gambas3.warning("Inicializando entorno para bibliteca privada")
+  $log4gambas3.warning("Inicializando entorno para biblioteca privada")
   ' Cargamos las variable del ambiente seleccionado
   $useLibrary = LibraryType_Private
   $appPath = User.Home &/ ".config/gacela/"
   $libraryName = DATABASE_NAME
   $dbType = TYPE_SQLITE3
+  $soTheme = FindSOTheme()
+  $appTheme = $settings[GLOBAL_APPLICATION_THEME, APP_THEME_SO]
 
   InitializeSettings()
 
@@ -93,12 +116,14 @@ End
 
 Public Sub InitializeMultiUserSettings() '' Inicializa y valida la estructura de Settings multiusuaro
 
-  $log4gambas3.warning("Inicializando entorno para bibliteca multiusuaro")
+  $log4gambas3.warning("Inicializando entorno para biblioteca multiusuaro")
   ' Cargamos las variable del ambiente seleccionado
   $useLibrary = LibraryType_Shared
   $appPath = PATH_APP_MULTI
   $libraryName = DATABASE_NAME
   $dbType = TYPE_SQLITE3
+  $soTheme = FindSOTheme()
+  $appTheme = $settings[GLOBAL_APPLICATION_THEME, APP_THEME_SO]
 
   InitializeSettings()
 
@@ -126,13 +151,17 @@ Public Function InitializeLogger() As Log4Gambas3
 
 End
 
-' === Métodos privados ===
+'================================================
+'
+'         Métodos privados
+'
+'================================================
 Private Sub InitializeSettings()
-
-  $log4gambas3.warning("creando archivo ini con datos iniciales")
 
   Dim configPathName As String = $appPath &/ $configName
   Dim libraryPathName As String
+
+  $log4gambas3.warning("creando archivo ini con datos iniciales")
 
   ' Verificamos que exista el archivo de Settings
   If Not Exist(configPathName) Then
@@ -152,7 +181,38 @@ Private Sub InitializeSettings()
 
 End
 
-' === Métodos para las propiedades públicas ===
+Private Function FindSOTheme() As Integer
+
+  Dim bgColor As Integer
+  Dim brightness As Float
+  Dim r, g, b As Integer
+
+  bgColor = Color.Background
+
+  ' Extraer componentes RGB
+  r = Color[bgColor].Red
+  g = Color[bgColor].Green
+  b = Color[bgColor].Blue
+
+  ' Calcular brillo (luminosidad)
+  brightness = (r * 0.299 + g * 0.587 + b * 0.114)
+
+  ' Si el brillo es menor a 128, es tema oscuro
+  If brightness < 128 Then
+    Return APP_THEME_DARK
+  Else
+    Return APP_THEME_LIGHT
+  Endif
+
+  Return 0
+
+End
+
+' =======================================================
+'
+'       Métodos para las propiedades públicas
+'
+' =======================================================
 Function IsFirstRun_Read() As Boolean
 
   Return $isFirstRun

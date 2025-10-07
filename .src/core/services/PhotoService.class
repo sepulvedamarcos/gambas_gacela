@@ -1,0 +1,101 @@
+' Gambas class file
+
+Private $configuration As Configuration
+Private $log4gambas As Log4Gambas3
+Private $photoRepository As PhotoRepository
+Private $compressionService As CompressionService
+
+' ==================================================
+'
+'          Metodos publicos
+'
+' ==================================================
+Public Sub _new(configuration As Configuration, log4gambas As Log4Gambas3, photorepository As PhotoRepository, compressionService As CompressionService)
+
+  $configuration = configuration
+  $log4gambas = log4gambas
+  $photoRepository = photoRepository
+  $compressionService = compressionService
+
+End
+
+Public Function GetAllPhotos() As PhotoEntity[]
+
+  Dim photosEntity As PhotoEntity[]
+
+  Try photosEntity = $photoRepository.getPhotos()
+  If Error Then
+    $log4gambas.Error("Error al leer las fotos " & Error.Text)
+    error.Propagate
+  Endif
+
+  Return photosEntity
+
+End
+
+Public Function ImportPhoto(imagenPath As String) As PhotoEntity
+
+  Dim photoEntity As New PhotoEntity
+  Dim originalPhoto As Image
+  Dim imageString As String
+  Dim compressedZip As String
+  Dim thumbnailImage As Image
+  Dim tempThumbFile As String
+  Dim pp As String
+  Dim thumbnailString As String
+
+  ' 1. Cargar imagen original
+  originalPhoto = Image.Load(imagenPath)
+  imageString = File.Load(imagenPath)
+
+  ' Generar thumbnail
+  thumbnailImage = originalPhoto.Stretch(50, -1)
+  ' 2. Guardar temporalmente
+  tempThumbFile = Temp() & ".jpg"
+  pp = thumbnailImage.ToString("jpg", 100)
+  File.Save(tempThumbFile, pp)
+
+  'thumbnail.Save(tempThumbFile, 85)
+  ' 3. Leer bytes
+  thumbnailString = File.Load(tempThumbFile)
+
+  ' 3. Comprimir imagen completa a ZIP
+  'compressedZip = $compressionService.CompressImageToZip(filePath)
+  photoEntity.FileName = imagenPath
+  photoEntity.CompressedPhoto = imageString
+  photoEntity.Thumbnail = thumbnailString
+  'photoEntity.MD5Hash = MD5(imageString)
+
+  photoEntity = $photoRepository.createPhoto(photoEntity)
+
+  Return photoEntity
+
+Catch
+  $log4gambas.Error("Error importando foto: " & Error.Text)
+  Error.Propagate
+
+End
+
+Public Function ToggleFavorite(photoId As Integer, stars As Integer) As Boolean
+
+  Dim photo As PhotoEntity
+
+  Return True
+
+End
+
+Public Sub DeletePhoto(photoId As Integer) As Boolean
+
+  Return True
+
+Catch
+  $log4gambas.error("Ocurrio un problema al elimianar la foto")
+  Error.Propagate
+
+End
+
+' ==================================================
+'
+'          Metodos privados
+'
+' ==================================================

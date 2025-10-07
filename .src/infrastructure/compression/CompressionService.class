@@ -1,1 +1,11 @@
 ' Gambas class file
+
+Private $log4gambas As Log4Gambas3
+Private $configuration As Configuration
+
+Public Sub _new(configuration As Configuration, logger As Log4Gambas3)
+
+  $configuration = configuration
+  $log4gambas = logger
+
+End

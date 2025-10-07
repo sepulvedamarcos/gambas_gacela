@@ -4,7 +4,13 @@ Private $log4Gambas As Log4Gambas3
 Private $dbContext As SQLiteContext
 Private $configuration As Configuration
 
-Public Sub _new(logger As Log4Gambas3, context As SQLiteContext, configuration As Configuration)
+' ==================================================
+'
+'          Metodos publicos
+'
+' ==================================================
+
+Public Sub _new(configuration As Configuration, logger As Log4Gambas3, context As SQLiteContext)
 
   $log4Gambas = logger
   $dbContext = context
@@ -40,8 +46,31 @@ Catch
 
 End
 
-' Mapeo privado dentro del Repository
-Private Function MapResultToEntity(result As Result) As PhotoEntity[]
+Public Function createPhoto(photo As PhotoEntity) As PhotoEntity
+
+  Dim result As Result
+
+  result = $dbContext.DBConnection.Create($configuration.TABLE_PHOTOS)
+  result["id"] = $dbContext.CreateKey()
+  result["file_name"] = photo.FileName
+  result["compressed_photo"] = photo.CompressedPhoto
+  result["thumbnail"] = photo.Thumbnail
+  result["creation_date"] = Now()
+  result["last_sync_date"] = Now()
+  result["import_date"] = Now()
+  result["import_user"] = User.Name
+  result["soft_delete"] = False
+  result.Update()
+
+End
+
+' ==================================================
+'
+'          Metodos privados
+'
+' ==================================================
+
+Private Function MapResultToEntity(result As Result) As PhotoEntity[] '' Mapeo privado dentro del Repository
 
   Dim photo As PhotoEntity
   Dim photos As New PhotoEntity[]
@@ -64,7 +93,7 @@ Private Function MapResultToEntity(result As Result) As PhotoEntity[]
     ' photo.IsFavorite = result["is_favorite"]
     ' photo.ImportUser = result["import_user"]
     ' photo.SoftDelete = Not result["soft_delete"]
-    ' photo.CompressedPhoto = result["compressed_photo"]
+    photo.CompressedPhoto = result["compressed_photo"]
     ' photo.Thumbnail = result["thumbnail"]
     ' photo.CompressionLevel = result["compression_level"]
     ' photo.LastSyncDate = result["last_sync_date"]
@@ -77,8 +106,7 @@ Private Function MapResultToEntity(result As Result) As PhotoEntity[]
 
 End
 
-' Mapeo privado Entity → Result
-Private Sub MapEntityToResult(photo As PhotoEntity, result As Result)
+Private Sub MapEntityToResult(photo As PhotoEntity, result As Result) '' Mapeo privado Entity → Result
 
   result["file_name"] = photo.FileName
   result["md5_hash"] = photo.MD5Hash

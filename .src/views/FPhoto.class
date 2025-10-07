@@ -4,10 +4,12 @@ Private $photo As PhotoEntity
 
 Public Sub _new(photo As PhotoEntity)
 
+  Dim cc As Image
+
   $photo = photo
 
-End
-
-Public Sub Form_Open()
+  LabelPhotoName.Text = $photo.FileName
+  LabelPhotoDescription.Text = $photo.Description
+  PictureBoxPhoto.Image = Image.FromString($photo.CompressedPhoto)
 
 End

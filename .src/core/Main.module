@@ -12,13 +12,14 @@ Private $configuration As Configuration
 Private $log4Gambas As Log4Gambas3
 Private $connDB As SQLiteContext
 Private $photorepository As PhotoRepository
-' Private $servicioArchivos As FileService
-' Private $biblioteca As Library
+Private $photoService As PhotoService
+Private $compressionService As CompressionService
 
 Public Sub Main()
 
   Dim response As Integer
   Dim formMain As FMain
+  Dim result As String
 
   $configuration = New Configuration
   $log4Gambas = $configuration.InitializeLogger()
@@ -49,10 +50,14 @@ Public Sub Main()
 
   $log4Gambas.Info("Iniciando Gacela v" & Application.Version)
 
+  ' Inicializacion e inyectores
   $connDB = New SQLiteContext($configuration, $log4gambas)
-  $photorepository = New PhotoRepository($log4Gambas, $connDB, $configuration)
+  $photorepository = New PhotoRepository($configuration, $log4Gambas, $connDB)
+  $compressionService = New CompressionService($configuration, $log4gambas)
+  $photoService = New PhotoService($configuration, $log4gambas, $photorepository, $compressionService)
 
-  formMain = New FMain($log4gambas, $photorepository)
+  ' creamos e inyectamos en el formulario
+  formMain = New FMain($configuration, $log4gambas, $photoService)
   formMain.Show()
 
 Catch

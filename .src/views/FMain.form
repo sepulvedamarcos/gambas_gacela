@@ -3,18 +3,26 @@
 { Form Form
   MoveScaled(0,0,149,87)
   Expand = True
-  Centered = True
+  Icon = Picture["icon:/medium/volume"]
+  Arrangement = Arrange.Horizontal
+  { buscar Menu
+    Toggle = True
+    { nombre Menu
+      Text = ("nombre")
+      Checked = True
+    }
+  }
   { HBox1 HBox
-    MoveScaled(1,2,125,72)
+    MoveScaled(1,2,137,72)
     Expand = True
     Spacing = True
     Padding = 4
     { PanelIzquierdo Panel
       MoveScaled(1,1,27,69)
-      Background = Color.LightForeground
+      Background = &HE8E8E8
       { Label2 Label
         MoveScaled(1,2,13,3)
-        Font = Font["Ubuntu Sans,+2"]
+        Font = Font["Poppins,16"]
         Text = ("Libreria")
       }
       { Label3 Label
@@ -30,47 +38,71 @@
         MoveScaled(4,11,12,3)
         Text = ("Compartida")
       }
-      { Label5 Label
-        MoveScaled(2,16,13,3)
-        Font = Font["Ubuntu Sans,+2"]
-        Text = ("Grupos")
-      }
-      { Label6 Label
-        MoveScaled(2,41,13,3)
-        Font = Font["Ubuntu Sans,+2"]
-        Text = ("Tags")
+      { Expander1 Expander
+        MoveScaled(1,22,24,24)
+        Font = Font["Poppins,16"]
+        Expand = True
+        Border = False
+        Text = ("Libreria")
+        { CheckBox1 CheckBox
+          MoveScaled(2,2,16,4)
+          Font = Font["Poppins,-1"]
+          Text = ("ererer")
+        }
+        { CheckBox2 CheckBox
+          MoveScaled(2,6,16,4)
+          Font = Font["Poppins,+1"]
+          Text = ("asdad")
+        }
       }
     }
     { PanelDerecho VBox
-      MoveScaled(29,1,92,69)
-      Background = Color.LightForeground
-      Padding = 10
+      MoveScaled(30,1,102,69)
+      Expand = True
+      Padding = 4
       { PanelBusqueda Panel
         MoveScaled(1,1,90,7)
-        Background = &HA7C3E0
         Arrangement = Arrange.Horizontal
         Padding = 8
         { Label1 Label
           MoveScaled(2,2,27,3)
+          Font = Font["Ubuntu Sans,Bold,10"]
           Text = ("Photos en xxxx GRoup")
         }
+        { MenuButton1 MenuButton
+          MoveScaled(25,1,20,4)
+          Text = (",mn,mn,nm")
+          Picture = Picture["icon:/medium/find"]
+          Menu = "buscar"
+        }
         { ButtonBox1 ButtonBox
-          MoveScaled(33,1,56,5)
+          MoveScaled(46,1,43,5)
           Expand = True
+          PopupMenu = "buscar"
           Direction = Direction.LeftToRight
           Picture = Picture["icon:/medium/find"]
           ClearButton = True
         }
       }
+      { HBox2 Panel
+        MoveScaled(1,8,90,8)
+        { Panel1 Panel
+          MoveScaled(31,0,24,8)
+          { Button1 Button
+            MoveScaled(4,3,16,4)
+          }
+        }
+        { Spring1 Spring
+          MoveScaled(11,2,4,4)
+        }
+      }
       { PanelDespliegue Panel
-        MoveScaled(1,10,87,57)
-        Background = &HC0C0C0
+        MoveScaled(1,16,90,51)
+        Expand = True
         Arrangement = Arrange.Row
+        Spacing = True
+        Padding = 4
       }
     }
-  }
-  { PanelPaso Panel
-    MoveScaled(127,2,21,72)
-    Arrangement = Arrange.Vertical
   }
 }

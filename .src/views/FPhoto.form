@@ -1,8 +1,29 @@
 # Gambas Form File 3.0
 
 { Form Form
-  MoveScaled(0,0,25,25)
-  { Button1 Button
-    MoveScaled(5,8,16,4)
+  MoveScaled(0,0,38,48)
+  Expand = True
+  Arrangement = Arrange.Vertical
+  Margin = True
+  { PictureBoxPhoto PictureBox
+    MoveScaled(0,-1,36,38)
+    Expand = True
+    Stretch = True
+  }
+  { Panel1 Panel
+    MoveScaled(1,37,36,11)
+    Background = &HE0E0E0
+    { LabelPhotoName Label
+      MoveScaled(1,1,34,3)
+      Font = Font["Poppins,+1"]
+      Foreground = &H000000
+    }
+    { LabelPhotoDescription Label
+      MoveScaled(1,4,33,6)
+      Font = Font["Poppins,-1"]
+      Foreground = &H606060
+      Text = ("ASAsASAsS A wA SAs A SAaSAsAS A sASAsAS sasASAsaSAss AS AsAS As AS A ")
+      Trim = True
+    }
   }
 }

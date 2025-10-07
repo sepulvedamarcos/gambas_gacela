@@ -55,6 +55,21 @@ Public Sub InitializeDatabase()
 
 End
 
+' Crea una clave única basada en timestamp Unix (como tu ejemplo)
+Public Function CreateKey() As Long
+
+  Dim currentDate As Date
+  Dim elapsedTime As Long
+
+  ' Crear timestamp Unix actual
+  currentDate = Now()
+  elapsedTime = DateDiff("1/1/1970", currentDate, gb.Second)
+  $log4gambas.Debug("Nueva clave generada: " & elapsedTime)
+
+  Return elapsedTime
+
+End
+
 ' Crea la base de datos física usando el patrón nativo de Gambas
 Private Sub CreateDatabase()
 
@@ -245,21 +260,6 @@ Private Sub CreatePhotosTagsTable()
 
 End
 
-' Crea una clave única basada en timestamp Unix (como tu ejemplo)
-Private Function CreateKey() As Long
-
-  Dim currentDate As Date
-  Dim elapsedTime As Long
-
-  ' Crear timestamp Unix actual
-  currentDate = Now()
-  elapsedTime = DateDiff("1/1/1970", currentDate, gb.Second)
-  $log4gambas.Debug("Nueva clave generada: " & elapsedTime)
-
-  Return elapsedTime
-
-End
-
 ' Método para obtener estadísticas básicas
 Public Function CountPhotos() As Integer
 
@@ -326,20 +326,21 @@ End
 Private Sub InsertDummyPhoto1()
 
   Dim result As Result
-  Dim dummyImage As Image
+  ' Dim dummyImage As Image
   Dim dummyThumbnail As Image
   Dim compressedPhoto As Byte[]
   Dim thumbnail As Byte[]
+  Dim tempFile As String
+  Dim dummyImage As String
 
   ' Crear imagen dummy de 100x100 roja
-  dummyImage = New Image(100, 100, Color.Red)
+  ' dummyImage = New Image(100, 100, Color.Red)
 
   ' Crear thumbnail dummy de 50x50 roja
   dummyThumbnail = New Image(50, 50, Color.Red)
 
-  ' Convertir a bytes (JPEG)
-  ' compressedPhoto = ImageToBytes(dummyImage, 85)
-  ' thumbnail = ImageToBytes(dummyThumbnail, 80)
+  ' tempFile = "./4139955.png"
+  dummyImage = File.Load("./4139955.png")
 
   ' Insertar registro usando método nativo
   result = $db.Create($configuration.TABLE_PHOTOS)
@@ -357,7 +358,7 @@ Private Sub InsertDummyPhoto1()
   result["is_favorite"] = True
   result["import_user"] = User.Name
   result["soft_delete"] = False
-  ' result["compressed_photo"] =
+  result["compressed_photo"] = dummyImage
   ' result["thumbnail"] = Null
   result["compression_level"] = 85
   result["last_sync_date"] = Now()
@@ -375,6 +376,8 @@ Private Sub InsertDummyPhoto2()
   Dim dummyThumbnail As Image
   Dim compressedPhoto As Byte[]
   Dim thumbnail As Byte[]
+  Dim pp As String
+  Dim cc As Picture
 
   ' Crear imagen dummy de 150x150 azul
   dummyImage = New Image(150, 150, Color.Blue)
@@ -382,9 +385,14 @@ Private Sub InsertDummyPhoto2()
   ' Crear thumbnail dummy de 50x50 azul
   dummyThumbnail = New Image(50, 50, Color.Blue)
 
+  ' cc = New Picture(150, 150)
+  ' pp = cc.ToString("png", 100)
+  ' pp = File.Save("~/Desarrollo/xx.png", pp)
   ' Convertir a bytes (JPEG)
   ' compressedPhoto = ImageToBytes(dummyImage, 85)
   ' thumbnail = ImageToBytes(dummyThumbnail, 80)
+
+  pp = File.Load("./4140038.png")
 
   ' Insertar registro usando método nativo
   result = $db.Create($configuration.TABLE_PHOTOS)
@@ -402,7 +410,7 @@ Private Sub InsertDummyPhoto2()
   result["is_favorite"] = False
   result["import_user"] = User.Name
   result["soft_delete"] = False
-  result["compressed_photo"] = Null
+  result["compressed_photo"] = pp
   result["thumbnail"] = Null
   result["compression_level"] = 85
   result["last_sync_date"] = Now()
@@ -419,10 +427,12 @@ Private Function ImageToBytes(img As Image, quality As Integer) As Byte[]
   Dim tempFile As String
   Dim imageBytes As Byte[]
   Dim hFile As File
+  Dim pp As String
 
   ' Crear archivo temporal
   'tempFile = Temp() & ".jpg"
-  tempFile = "/home/marcos/Desarrollo/4139948.png"
+  tempFile = "./Metallica_St.Anger_720x.png"
+  File.Load(tempFile)
 
   ' Abrir el archivo en modo binario
   im = New ImageView(tempFile)

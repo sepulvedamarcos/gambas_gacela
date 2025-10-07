@@ -1,33 +1,32 @@
 ' Gambas class file
 
+Private $configuration As Configuration
 Private $log4Gambas As Log4Gambas3
-Private $photoRepository As PhotoRepository
-Private $photos As PhotoEntity[]
+Private $photoService As PhotoService
 
-Public Sub _new(logger As Log4Gambas3, repository As PhotoRepository)
+Public Sub _new(configuration As Configuration, logger As Log4Gambas3, photoService As PhotoService)
 
+  $configuration = configuration
   $log4Gambas = logger
-  $log4Gambas.Debug("en formulario")
-
-  $photoRepository = repository
-  $photos = $photoRepository.getPhotos()
+  $photoService = photoService
 
 End
 
 Public Sub Form_Open()
 
+  Dim photos As PhotoEntity[]
   Dim photo As PhotoEntity
   Dim PanelPhoto As Panel
   Dim formphoto As FPhoto
 
-  $log4Gambas.Debug("en formulario open")
+  $log4Gambas.Debug("en formulario open obtenemos los registros de fotos")
 
-  For Each photo In $photos
+  photos = $photoService.GetAllPhotos()
+  For Each photo In photos
     PanelPhoto = New Panel(PanelDespliegue)
-    PanelPhoto.Width = 180
-    PanelPhoto.Height = 180
+    PanelPhoto.Width = 266
+    PanelPhoto.Height = 336
     PanelPhoto.Border = Border.Solid
-    PanelPhoto.Background = Color.Blue
     PanelPhoto.Show()
 
     formphoto = New FPhoto(photo, PanelPhoto)
@@ -49,5 +48,20 @@ End
 Public Sub ButtonBox1_Click()
 
   Message.Info("hola")
+
+End
+
+Public Sub Expander1_Show()
+
+  Expander1.Expand = True
+
+End
+
+Public Sub Button1_Click()
+
+  Dim foto As String = "/home/marcos/Imágenes/Wallpaper-HD/img-60.jpg"
+  Dim photoEntity As PhotoEntity
+
+  photoEntity = $photoService.ImportPhoto(foto)
 
 End
