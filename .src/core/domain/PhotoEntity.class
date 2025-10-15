@@ -1,50 +1,42 @@
 ' Gambas class file
 
+'
 ' Gambas class file - PhotoEntity
 ' Modelo de dominio para representar una foto en Gacela
-
+'
 ' Propiedades privadas del modelo
 Private $id As Integer = 0
 Private $fileName As String = ""
-Private $md5Hash As String = ""
-Private $originalSize As Long = 0
-Private $compressedSize As Long = 0
 Private $widthPixels As Integer = 0
 Private $heightPixels As Integer = 0
-Private $originalFormat As String = ""
 Private $creationDate As Date
 Private $importDate As Date
+Private $lastSyncDate As Date
+Private $stars As Integer = 0
 Private $description As String = ""
-Private $isFavorite As Boolean = False
 Private $importUser As String = ""
-Private $softDelete As Boolean = False
-Private $compressedPhoto As String
+Private $originalPhoto As String
 Private $thumbnail As String
-Private $compressionLevel As Integer = 0
-
+Private $softDelete As Boolean = False
 ' =============================================
 '
 '            PROPIEDADES PÚBLICAS
 '
 '==============================================
-Property Id As Integer' ID único de la foto
-Property FileName As String' Nombre del archivo original
-Property MD5Hash As String' Hash MD5 único
-Property OriginalSize As Long' Tamaño original en bytes
-Property CompressedSize As Long' Tamaño después de compresión en bytes
-Property WidthPixels As Integer' Ancho en píxeles
-Property CreationDate As Date' Fecha de creación de la foto (desde metadatos EXIF)
-Property Description As String' Descripción de la foto
-Property IsFavorite As Boolean' Marcada como favorita
-Property SoftDelete As Boolean' Estado activo (soft delete)
-Property HeightPixels As Integer' Alto en píxeles
-Property OriginalFormat As String' Formato original (jpg, png, etc)
-Property ImportDate As Date' Fecha de importación a Gacela
-Property ImportUser As String' Usuario que importó la foto
-Property Thumbnail As String' Miniatura como array de bytes
-Property CompressedPhoto As String' Foto comprimida como array de bytes
-Property Read SpaceSaving As Float' Obtiene el ahorro de espacio
-Property Read CompressionRatio As Float' Obtiene el ratio de compresión
+Property Id As Integer                    '' ID único de la foto
+Property FileName As String               '' Nombre del archivo original
+Property WidthPixels As Integer           '' Ancho en píxeles
+Property HeightPixels As Integer          '' Alto en píxeles
+Property CreationDate As Date             '' Fecha de creación de la foto (desde metadatos EXIF)
+Property ImportDate As Date               '' Fecha de importación a Gacela
+Property LastSyncDate As Date             '' Ultima fecha de sincronizacion
+Property Stars As Integer                 '' Indicador de estrellas de la foto
+Property Description As String            '' Descripción de la foto
+Property ImportUser As String             '' Usuario que importó la foto
+Property OriginalPhoto As String          '' Foto
+Property Thumbnail As String              '' Miniatura
+Property SoftDelete As Boolean            '' Estado activo (soft delete)
+Property Read HasThumbnail As Boolean     '' Indicador de tenencia de miniatura
 
 '=================================================
 '
@@ -76,42 +68,6 @@ Sub FileName_Write(value As String)
 
 End
 
-Function MD5Hash_Read() As String
-
-  Return $md5Hash
-
-End
-
-Sub MD5Hash_Write(value As String)
-
-  $md5Hash = value
-
-End
-
-Function OriginalSize_Read() As Long
-
-  Return $originalSize
-
-End
-
-Sub OriginalSize_Write(value As Long)
-
-  $originalSize = value
-
-End
-
-Function CompressedSize_Read() As Long
-
-  Return $compressedSize
-
-End
-
-Sub CompressedSize_Write(value As Long)
-
-  $compressedSize = value
-
-End
-
 Function WidthPixels_Read() As Integer
 
   Return $widthPixels
@@ -133,18 +89,6 @@ End
 Sub HeightPixels_Write(value As Integer)
 
   $heightPixels = value
-
-End
-
-Function OriginalFormat_Read() As String
-
-  Return $originalFormat
-
-End
-
-Sub OriginalFormat_Write(value As String)
-
-  $originalFormat = LCase(value)
 
 End
 
@@ -172,6 +116,18 @@ Sub ImportDate_Write(value As Date)
 
 End
 
+Function LastSyncDate_Read() As Date
+
+  Return $lastSyncDate
+
+End
+
+Sub LastSyncDate_Write(LastSync As Date)
+
+  $lastSyncDate = LastSync
+
+End
+
 Function Description_Read() As String
 
   Return $description
@@ -181,18 +137,6 @@ End
 Sub Description_Write(value As String)
 
   $description = value
-
-End
-
-Function IsFavorite_Read() As Boolean
-
-  Return $isFavorite
-
-End
-
-Sub IsFavorite_Write(value As Boolean)
-
-  $isFavorite = value
 
 End
 
@@ -220,15 +164,15 @@ Sub SoftDelete_Write(value As Boolean)
 
 End
 
-Function CompressedPhoto_Read() As String
+Function OriginalPhoto_Read() As String
 
-  Return $compressedPhoto
+  Return $originalPhoto
 
 End
 
-Sub CompressedPhoto_Write(value As String)
+Sub OriginalPhoto_Write(value As String)
 
-  $compressedPhoto = value
+  $originalPhoto = value
 
 End
 
@@ -244,131 +188,20 @@ Sub Thumbnail_Write(value As String)
 
 End
 
-' Nivel de compresión aplicado (1-100)
-Property CompressionLevel As Integer
-
-Function CompressionLevel_Read() As Integer
-
-  Return $compressionLevel
-
-End
-
-Sub CompressionLevel_Write(value As Integer)
-
-  If value >= 1 And value <= 100 Then
-    $compressionLevel = value
-  Endif
-
-End
-
-' === PROPIEDADES DE SOLO LECTURA ===
-
-Function CompressionRatio_Read() As Float
-
-  If $originalSize > 0 And $compressedSize > 0 Then
-    Return ($compressedSize / $originalSize) * 100.0
-  Else
-    Return 0.0
-  Endif
-
-End
-
-Function SpaceSaving_Read() As Float
-
-  If $originalSize > 0 And $compressedSize > 0 Then
-    Return ((($originalSize - $compressedSize) / $originalSize) * 100.0)
-  Else
-    Return 0.0
-  Endif
-
-End
-
-' Obtiene las dimensiones como texto
-Property Read Dimensions As String
-
-Function Dimensions_Read() As String
-
-  If $widthPixels > 0 And $heightPixels > 0 Then
-    Return $widthPixels & " x " & $heightPixels
-  Else
-    Return "Desconocido"
-  Endif
-
-End
-
-' Obtiene el tamaño original formateado
-Property Read FormattedOriginalSize As String
-
-Function FormattedOriginalSize_Read() As String
-
-  Return FormatSize($originalSize)
-
-End
-
-' Obtiene el tamaño comprimido formateado
-Property Read FormattedCompressedSize As String
-
-Function FormattedCompressedSize_Read() As String
-
-  Return FormatSize($compressedSize)
-
-End
-
-' Verifica si tiene foto comprimida
-Property Read HasCompressedPhoto As Boolean
-
-Function HasCompressedPhoto_Read() As Boolean
-
-  Return $compressedPhoto <> Null And $compressedPhoto.Length > 0
-
-End
-
-' Verifica si tiene miniatura
-Property Read HasThumbnail As Boolean
-
 Function HasThumbnail_Read() As Boolean
 
-  Return $thumbnail <> Null And $thumbnail.Length > 0
+  Return $thumbnail <> Null And $thumbnail.Len > 0
 
 End
 
-' === MÉTODOS DE UTILIDAD ===
+Private Function Stars_Read() As Integer
 
-' Formatea un tamaño en bytes a formato legible
-Private Function FormatSize(sizeBytes As Long) As String
-
-  Dim units As String[] = ["bytes", "KB", "MB", "GB"]
-  Dim size As Float = sizeBytes
-  Dim unitIndex As Integer = 0
-
-  While size >= 1024 And unitIndex < (units.Max)
-    size = size / 1024
-    unitIndex += 1
-  Wend
-
-  If unitIndex = 0 Then
-    Return CStr(sizeBytes) & " " & units[unitIndex]
-  Else
-    Return Format(size, "0.00") & " " & units[unitIndex]
-  Endif
+  Return $stars
 
 End
 
-' Limpia los datos binarios para liberar memoria
-Public Sub ClearBinaryData()
+Private Sub Stars_Write(Value As Integer)
 
-  $compressedPhoto = Null
-  $thumbnail = Null
-  $compressedSize = 0
-
-End
-
-' Actualiza las dimensiones y formato desde una imagen
-Public Sub UpdateFromImage(image As Image)
-
-  If image Then
-    $widthPixels = image.Width
-    $heightPixels = image.Height
-  Endif
+  $stars = value
 
 End

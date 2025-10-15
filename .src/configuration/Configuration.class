@@ -18,136 +18,84 @@ Private Const LOG4GAMBAS_SIZELOG As String = "Log4Gambas/SizeLog"
 Private Const LOG4GAMBAS_LOGFILE As String = "Log4Gambas/LogFile"
 Private Const LOG4GAMBAS_MAXFILESIZE As String = "Log4Gambas/MaxFilesSize"
 
-' Constantes de base de datos y seccion BD
-Private Const DB_DATABASE_NAME As String = "Database/Name"
-Private Const DB_TYPE As String = "Database/Type"
-
-Public Const DATABASE_NAME As String = "gacela.db"
-Public Const TYPE_SQLITE3 As String = "sqlite3"
-
-Public Const TABLE_PHOTOS As String = "photos"
-Public Const TABLE_ALBUMS As String = "albums"
-Public Const TABLE_PHOTOS_ALBUMS As String = "photo_albums"
-Public Const TABLE_TAGS As String = "tags"
-Public Const TABLE_PHOTOS_TAGS As String = "photos_tags"
-
-Private Const PATH_APP_MULTI As String = "/usr/share/gacela"
-
-' Enumeración para tipos de biblioteca
-Public Enum LibraryType_Private = 1                 '' Enum indica que colección es privada
-Public Enum LibraryType_Shared = 2                  '' Enum indica que colección es compartida
-
-' Enumeracion para indicar tipo de tema a usar
-Public Enum APP_THEME_SO = 1                        '' Enum para indicar que se usara el thema del Sistema Operativo
-Public Enum APP_THEME_LIGHT = 2                     '' Enum para indicar que se usara el thema Light siempre
-Public Enum APP_THEME_DARK = 3                      '' Enum para indicar que se usara el thema Dark siempre
-
-' Enumeración para formatos de exportación
-' Public Enum ExportFormat_Original = 0
-' Public Enum ExportFormat_JPEG_High = 1
-' Public Enum ExportFormat_JPEG_Medium = 2
-' Public Enum ExportFormat_PNG = 3
-
 ' Variable privadas
-Private $settings As Settings                       '' Objeto que referencia al archivo de settings
-Private $isFirstRun As Boolean = False              '' Indicador de primera ejecucion
-Private $useLibrary As Integer = 1                  '' Indicador de tipo de libreria activa
-Private $appPath As String                          '' Ruta de los archivos de la aplicación
-Private $configName As String = "gacela.conf"       '' Nomrbe del arvhivo de settings
-Private $libraryName As String = "gacela.db"        '' Nombre del archivo de SQLite3
-Private $dbType As String                           '' Tipo de Bd datos por ahora SQLite3
-Private $log4gambas3 As New Log4Gambas3             '' Objeto para hacer logger
-Private $soTheme As Integer                         '' Indica el tema activo del SO
-Private $appTheme As Integer                        '' Indica el tema que usa la aplicacion
+Private $settings As Settings                                                 '' Objeto que referencia al archivo de settings
+Private $isFirstRun As Boolean = False                                        '' Indicador de primera ejecucion
+Private $whichLibrary As Integer = Enumeration.LibraryType_Private            '' Indicador de tipo de libreria activa
+Private $appPath As String                                                    '' Ruta de los archivos de la aplicación
+Private $log4gambas As New Log4Gambas3                                        '' Objeto para hacer logger
+Private $soTheme As Integer                                                   '' Indica el tema activo del SO
+Private $appTheme As Integer                                                  '' Indica el tema que usa la aplicacion
+Private $libraryName As String                                                '' Nombre de la libreria
 
 ' Propiedades
-Property Read IsFirstRun As Boolean                 '' Indicador de primera ejecución
-Property Read LibraryPathName As String             '' Indica la ruta donde se alojan los archivos de la aplicacion
+Property Read IsFirstRun As Boolean                                           '' Indicador de primera ejecución
+Property Read LibraryPath As String                                           '' Entrega path a la biblioteca actualmente activa
+Property Read whichLibrary As Integer                                              '' Entrega indicador de biblioteca seleccionada por el usuario
 
 '============================================
 '
 '      Métodos publicos
 '
 '============================================
-
 Public Sub _new()
 
-  $settings = New Settings(User.Home &/ ".config/gacela/gacela.conf")
+  ' Cargamos la ruta de la bilioteca privada como valor inicial y detectar primera vez
+  $appPath = User.Home &/ Constants.GACELA_DIRECTORY
+  'Revisamos cual es el tema definido por el sistema operativo
+  $soTheme = FindSOTheme()
+
+  $settings = New Settings($appPath &/ Constants.CONFIG_NAME)
   If $settings.Count = 0 Then
+    'Cargamos variable para indicar que es primera vez que se ingresa
     $isFirstRun = True
+    'Inicializamos el arvhivo settings
+    FirstInitializeSettings()
+    'Inicializamos la seccion Log4Gambas
+    FirstInitializeLogger()
+
+    $log4Gambas.Info("Se detecto que es el primer inicio. Se configurara la aplicacion privada y se detectara el sector compartido")
   Endif
 
 Catch
+  $log4gambas.Error("Error inicializando configuración: " & Error.Text)
   Error.Raise("Error inicializando configuración: " & Error.Text)
 
 End
 
-Public Sub InitializeEnvironment() ''Inicializa segun lo que esta previamente definido
+Public Sub InitializeEnvironment() ''Carga ambiente  definido en la configuracion
 
-  $log4gambas3.warning("Inicializando entorno")
+  $log4gambas.info("Inicializando entorno")
 
   If $settings[GLOBAL_LIBRARY_TYPE, Null] = Null Then
     Error.Raise("Problemas al cargar configuraciones iniciales")
   Else
-    $useLibrary = $settings[GLOBAL_LIBRARY_TYPE]
-    $appPath = $settings[GLOBAL_LIBRARY_DIRECTORY]
-    $libraryName = $settings[DB_DATABASE_NAME]
-    $dbType = $settings[DB_TYPE]
-    $soTheme = FindSOTheme()
-    $appTheme = $settings[GLOBAL_APPLICATION_THEME, APP_THEME_SO]
+    $whichLibrary = $settings[GLOBAL_LIBRARY_TYPE]
+    $appTheme = $settings[GLOBAL_APPLICATION_THEME, Enumeration.APP_THEME_SO]
   Endif
-
-End
-
-Public Sub InitializePrivateSettings() '' Inicializa y valida la estructura de Settings privada
-
-  $log4gambas3.warning("Inicializando entorno para biblioteca privada")
-  ' Cargamos las variable del ambiente seleccionado
-  $useLibrary = LibraryType_Private
-  $appPath = User.Home &/ ".config/gacela/"
-  $libraryName = DATABASE_NAME
-  $dbType = TYPE_SQLITE3
-  $soTheme = FindSOTheme()
-  $appTheme = $settings[GLOBAL_APPLICATION_THEME, APP_THEME_SO]
-
-  InitializeSettings()
-
-End
-
-Public Sub InitializeMultiUserSettings() '' Inicializa y valida la estructura de Settings multiusuaro
-
-  $log4gambas3.warning("Inicializando entorno para biblioteca multiusuaro")
-  ' Cargamos las variable del ambiente seleccionado
-  $useLibrary = LibraryType_Shared
-  $appPath = PATH_APP_MULTI
-  $libraryName = DATABASE_NAME
-  $dbType = TYPE_SQLITE3
-  $soTheme = FindSOTheme()
-  $appTheme = $settings[GLOBAL_APPLICATION_THEME, APP_THEME_SO]
-
-  InitializeSettings()
 
 End
 
 Public Function InitializeLogger() As Log4Gambas3
 
-  $log4gambas3.warning("creando archivo ini con datos del log4gambas3")
+  $log4gambas.warning("creando archivo ini con datos del log4gambas3")
   ' configuramos el logger
-  $log4gambas3.SetAppName(Application.Name)
-  $log4gambas3.SetMinLevel($settings[LOG4GAMBAS_LEVEL, $log4gambas3.LEVEL_DEBUG])
-  $log4gambas3.SetOutput($settings[LOG4GAMBAS_OUTPUT, $log4gambas3.OUTPUT_CONSOLE])
-  $log4gambas3.SetLogFile($settings[LOG4GAMBAS_LOGFILE, $log4gambas3.GetLogFile()])
-  $log4gambas3.SetMaxFileSize($settings[LOG4GAMBAS_MAXFILESIZE, $log4gambas3.GetMaxFileSize()])
-  $log4gambas3.SetMaxFiles($settings[LOG4GAMBAS_MAXFILES, $log4gambas3.GetMaxFiles()])
+  $log4gambas.SetAppName(Application.Name)
+  $log4gambas.SetMinLevel($settings[LOG4GAMBAS_LEVEL, $log4gambas.LEVEL_DEBUG])
+  $log4gambas.SetOutput($settings[LOG4GAMBAS_OUTPUT, $log4gambas.OUTPUT_CONSOLE])
+  $log4gambas.SetLogFile($settings[LOG4GAMBAS_LOGFILE, $log4gambas.GetLogFile()])
+  $log4gambas.SetMaxFileSize($settings[LOG4GAMBAS_MAXFILESIZE, $log4gambas.GetMaxFileSize()])
+  $log4gambas.SetMaxFiles($settings[LOG4GAMBAS_MAXFILES, $log4gambas.GetMaxFiles()])
 
-  $settings[LOG4GAMBAS_LEVEL] = $log4gambas3.GetMinLevel()
-  $settings[LOG4GAMBAS_OUTPUT] = $log4gambas3.GetOutput()
-  $settings[LOG4GAMBAS_LOGFILE] = $log4gambas3.GetLogFile()
-  $settings[LOG4GAMBAS_MAXFILESIZE] = $log4gambas3.GetMaxFileSize()
-  $settings[LOG4GAMBAS_MAXFILES] = $log4gambas3.GetMaxFiles()
-  $settings.Save()
+  Return $log4gambas
 
-  Return $log4gambas3
+End
+
+Public Sub SetWichLibrary(value As Integer)
+
+  $whichLibrary = Value
+  $settings[GLOBAL_LIBRARY_TYPE] = value
+  $settings.Save
 
 End
 
@@ -156,15 +104,12 @@ End
 '         Métodos privados
 '
 '================================================
-Private Sub InitializeSettings()
+Private Sub FirstInitializeSettings() ''Creacion de configuraciones iniciales
 
-  Dim configPathName As String = $appPath &/ $configName
-  Dim libraryPathName As String
-
-  $log4gambas3.warning("creando archivo ini con datos iniciales")
+  $log4gambas.info("creando archivo ini con datos iniciales")
 
   ' Verificamos que exista el archivo de Settings
-  If Not Exist(configPathName) Then
+  If Not Exist($appPath &/ Constants.CONFIG_NAME) Then
     If Not Exist($appPath) Then
       Mkdir $appPath
     Endif
@@ -172,22 +117,35 @@ Private Sub InitializeSettings()
 
   ' Sección Global
   $settings[GLOBAL_VERSION] = Application.Version
-  $settings[GLOBAL_LIBRARY_TYPE] = LibraryType_Private
-  $settings[GLOBAL_LIBRARY_DIRECTORY] = $appPath
+  $settings[GLOBAL_LIBRARY_TYPE] = Enumeration.LibraryType_Private
+  $settings[GLOBAL_LIBRARY_TYPE] = Me.whichLibrary
+  $settings[GLOBAL_APPLICATION_THEME] = $soTheme
+  $settings.Save()
 
-  $settings[DB_DATABASE_NAME] = $libraryName
-  $settings[DB_TYPE] = $dbType
+Catch
+  $log4gambas.Error("Error detectado al intentar crear directorio de archivo settings" & Error.Text)
+  Error.Raise("Error detectado al intentar crear directorio de archivo settings" & Error.Text)
+
+End
+
+Private Function FirstInitializeLogger() As Log4Gambas3
+
+  $log4gambas.info("creando logger con datos iniciales")
+
+  $settings[LOG4GAMBAS_LEVEL] = $log4gambas.GetMinLevel()
+  $settings[LOG4GAMBAS_OUTPUT] = $log4gambas.GetOutput()
+  $settings[LOG4GAMBAS_LOGFILE] = $appPath
+  $settings[LOG4GAMBAS_MAXFILESIZE] = $log4gambas.GetMaxFileSize()
+  $settings[LOG4GAMBAS_MAXFILES] = $log4gambas.GetMaxFiles()
   $settings.Save()
 
 End
 
 Private Function FindSOTheme() As Integer
 
-  Dim bgColor As Integer
+  Dim bgColor As Integer = Color.Background
   Dim brightness As Float
   Dim r, g, b As Integer
-
-  bgColor = Color.Background
 
   ' Extraer componentes RGB
   r = Color[bgColor].Red
@@ -199,9 +157,9 @@ Private Function FindSOTheme() As Integer
 
   ' Si el brillo es menor a 128, es tema oscuro
   If brightness < 128 Then
-    Return APP_THEME_DARK
+    Return Enumeration.APP_THEME_DARK
   Else
-    Return APP_THEME_LIGHT
+    Return Enumeration.APP_THEME_LIGHT
   Endif
 
   Return 0
@@ -219,27 +177,18 @@ Function IsFirstRun_Read() As Boolean
 
 End
 
-Private Function LibraryPathName_Read() As String
+Private Function whichLibrary_Read() As Integer
 
-  Return $appPath
-
-End
-
-'
-Public Function GetLibraryDirectory() As String
-
-  Return $settings[GLOBAL_LIBRARY_DIRECTORY]
+  Return $whichLibrary
 
 End
 
-Public Function GetDBType() As String
+Private Function LibraryPath_Read() As String
 
-  Return $settings[DB_TYPE]
-
-End
-
-Public Function GetDatabaseName() As String
-
-  Return $settings[DB_DATABASE_NAME]
+  If $whichLibrary = Enumeration.LibraryType_Private Then
+    Return $appPath
+  Else
+    Return Constants.GACELA_DIRECTORY_SHARED
+  Endif
 
 End

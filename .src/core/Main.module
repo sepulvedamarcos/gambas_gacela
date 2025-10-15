@@ -2,12 +2,6 @@
 
 ' Modulo de inicio de la aplicación Gestor de Álbumes Compartidos en Linux Avanzado
 
-' Constantes de la aplicación
-Private Const DIRECTORIO_GACELA As String = ".config/gacela"
-Private Const BIBLIOTECA_COMPARTIDA As String = "/usr/share/gacela/biblioteca"
-Private Const GRUPO_GACELA As String = "gacela-users"
-
-' Clases para inyección de dependencias (patrón DI manual)
 Private $configuration As Configuration
 Private $log4Gambas As Log4Gambas3
 Private $connDB As SQLiteContext
@@ -23,44 +17,77 @@ Public Sub Main()
 
   $configuration = New Configuration
   $log4Gambas = $configuration.InitializeLogger()
-
-  If $configuration.IsFirstRun Then
-    ' lanzamos ventana de advertencia para que seleccione como desea iniciar la aplicación
-    response = Message.Warning(("Hemos detectado que la primera vez que ejecuta la aplicación. Debe seleccionar cual de es la configuración con la que desea iniciar. Siempre la puede cambiar en el apartado de configuraciones"), ("Biblioteca privada"), ("Multiusuario"), ("Cancelar"))
-
-    Select Case response
-      Case $configuration.LibraryType_Private
-        $log4Gambas.Debug("Seleccion de biblioteca privada")
-        ' Le indicamos a la clase configuration que cargue ambiente privado
-        $configuration.InitializePrivateSettings()
-
-      Case $configuration.LibraryType_Shared
-        $log4Gambas.Debug("Seleccion de biblioteca multiusuario")
-        ' Le indicamos a la clase configuration que cargue ambiente multiusuario
-        $configuration.InitializeMultiUserSettings()
-
-      Case Else
-        Stop
-    End Select
-
-  Else
-    ' Cargamos el ambiente configurado
-    $configuration.InitializeEnvironment()
-  Endif
-
   $log4Gambas.Info("Iniciando Gacela v" & Application.Version)
+
+  ' Inicializa el entorno segun lo definido en el settings
+  $configuration.InitializeEnvironment()
+
+  ' Verificamos biblioteca compartida y privilegios. Si no existe se crean
+  If Not IsSharedLibraryAvailable() Then
+    Message.Warning("Biblioteca compartida no esta configurada")
+    Quit
+  End If
 
   ' Inicializacion e inyectores
   $connDB = New SQLiteContext($configuration, $log4gambas)
+  ' Crea la clase de capa repository
   $photorepository = New PhotoRepository($configuration, $log4Gambas, $connDB)
+  ' Crea el servicio de compresion
   $compressionService = New CompressionService($configuration, $log4gambas)
-  $photoService = New PhotoService($configuration, $log4gambas, $photorepository, $compressionService)
+  ' Crea el servicio de creacion de fotos
+  $photoService = New PhotoService($log4gambas, $photorepository, $compressionService, $configuration)
 
-  ' creamos e inyectamos en el formulario
+  ' Si es primera vez, insertar datos de prueba
+  If $configuration.IsFirstRun Then
+    $photoService.InsertSeedData()
+  Endif
+
+  ' Creamos e inyectamos en el formulario
   formMain = New FMain($configuration, $log4gambas, $photoService)
   formMain.Show()
 
 Catch
-  Print "Se detecto un problema grave y se detendra la aplicación" & Error.Text
+  Print "Se detecto un problema grave y se detendra la aplicación " & Error.Text
+  Message.Error("Se detecto un problema grave y se detendra la aplicación " & Error.Text)
+
+End
+
+Private Function IsSharedLibraryAvailable() As Boolean
+
+  Dim hasGroup As Boolean
+  Dim hasDirectory As Boolean
+  Dim hasPermissions As Boolean
+  Dim groupAvailable As String
+
+  ' Verificar que existe el grupo
+  Shell "getent group " & Constants.GRUPO_GACELA To groupAvailable
+  If groupAvailable = "" Then
+    Return False
+  Endif
+
+  ' Verificar que el usuario esta en el grupo
+  If InStr(groupAvailable, User.Name) <= 0 Then
+    Return False
+  Endif
+
+  ' Verificar que existe el directorio
+  If Not Exist(Constants.GACELA_DIRECTORY_SHARED) Then
+    Return False
+  Endif
+
+  ' Verificar permisos de escritura
+  If Exist(Constants.GACELA_DIRECTORY_SHARED) Then
+    Try File.Save(Constants.GACELA_DIRECTORY_SHARED &/ ".test", "test")
+    If Error Then Return False
+    Try Kill Constants.GACELA_DIRECTORY_SHARED &/ ".test"
+  Endif
+
+  'sudo Chown -R root:gacela - users/usr/share/gacela && \
+  'sudo Chmod 755 /usr/share/gacela && \
+  'sudo Chmod -R 775 /usr/share/gacela/biblioteca && \
+  'sudo find /usr/share/gacela/biblioteca -type d -exec Chmod g+s {} \; && \
+  'echo "Permisos configurados correctamente"
+
+  Return True
 
 End

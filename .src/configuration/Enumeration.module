@@ -1,0 +1,14 @@
+' Gambas module file
+
+' Enumeración para tipos de biblioteca
+Public Enum LibraryType_Private = 1                 '' Enum indica que colección es privada
+Public Enum LibraryType_Shared = 2                  '' Enum indica que colección es compartida
+
+' Enumeracion para indicar tipo de tema a usar
+Public Enum APP_THEME_SO = 1                        '' Enum para indicar que se usara el thema del Sistema Operativo
+Public Enum APP_THEME_LIGHT = 2                     '' Enum para indicar que se usara el thema Light siempre
+Public Enum APP_THEME_DARK = 3                      '' Enum para indicar que se usara el thema Dark siempre
+
+' Enums para indicar estado de sincronizacion
+Public Enum SYNC_PENDING = 1                        '' Enum para indicar que esta pendiente de sincronizacion
+Public Enum SYNC_SYNCED = 2                         '' Enum para indicar que fue sincronizada

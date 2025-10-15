@@ -1,21 +1,28 @@
 ' Gambas class file
 
-Private $configuration As Configuration
+'
+'
+' Clase de manejo de negocio
+'
+'
 Private $log4gambas As Log4Gambas3
 Private $photoRepository As PhotoRepository
 Private $compressionService As CompressionService
+Private $configuration As Configuration
+
+Private Const THUMBNAIL_MIN_BENEFIT As Float = 1.5      ' Generar si reduce al menos 50%
 
 ' ==================================================
 '
 '          Metodos publicos
 '
 ' ==================================================
-Public Sub _new(configuration As Configuration, log4gambas As Log4Gambas3, photorepository As PhotoRepository, compressionService As CompressionService)
+Public Sub _new(log4gambas As Log4Gambas3, photorepository As PhotoRepository, compressionService As CompressionService, configuration As Configuration)
 
-  $configuration = configuration
   $log4gambas = log4gambas
   $photoRepository = photoRepository
   $compressionService = compressionService
+  $configuration = configuration
 
 End
 
@@ -41,32 +48,50 @@ Public Function ImportPhoto(imagenPath As String) As PhotoEntity
   Dim compressedZip As String
   Dim thumbnailImage As Image
   Dim tempThumbFile As String
-  Dim pp As String
-  Dim thumbnailString As String
+  Dim thumbnailString As String = ""
+  Dim extension As String
+  Dim filename As String
+  Dim reduction As Integer
 
-  ' 1. Cargar imagen original
+  ' Cargar imagen original
   originalPhoto = Image.Load(imagenPath)
   imageString = File.Load(imagenPath)
 
-  ' Generar thumbnail
-  thumbnailImage = originalPhoto.Stretch(50, -1)
-  ' 2. Guardar temporalmente
-  tempThumbFile = Temp() & ".jpg"
-  pp = thumbnailImage.ToString("jpg", 100)
-  File.Save(tempThumbFile, pp)
+  $log4gambas.Debug("Tamaño de la imagen " & originalPhoto.Width & " x " & originalPhoto.Height)
 
-  'thumbnail.Save(tempThumbFile, 85)
-  ' 3. Leer bytes
-  thumbnailString = File.Load(tempThumbFile)
+  If originalPhoto.Width <= 255 Or originalPhoto.Height <= 255 Then
+    $log4gambas.Debug("imagen es menor que rango aceptable va sin miniatura")
+  Else
+    reduction = originalPhoto.Width / 0.125
+    If reduction <= THUMBNAIL_MIN_BENEFIT Then
+      $log4gambas.Debug("Reducción mínima (" & Format(reduction, "0.00") & "px), no generar thumbnail")
+    Else
+      $log4gambas.Debug("Thumbnail beneficioso: " & originalPhoto.Width & "px → " & "(reducción " & Format(reduction, "0.00") & "x)")
 
-  ' 3. Comprimir imagen completa a ZIP
-  'compressedZip = $compressionService.CompressImageToZip(filePath)
-  photoEntity.FileName = imagenPath
-  photoEntity.CompressedPhoto = imageString
+      ' Generar thumbnail
+      thumbnailImage = originalPhoto.Stretch(320, -1)
+      ' Guardar temporalmente
+      tempThumbFile = Temp() & "." & extension
+      thumbnailString = thumbnailImage.ToString(extension, 100)
+      File.Save(tempThumbFile, thumbnailString)
+
+      ' Miniatura lista para guardar
+      thumbnailString = File.Load(tempThumbFile)
+
+    Endif
+
+  Endif
+
+  ' Comprimir imagen completa a ZIP
+  photoEntity.FileName = File.Ext(imagenPath) & "." & File.BaseName(imagenPath)
+  photoEntity.OriginalPhoto = imageString
   photoEntity.Thumbnail = thumbnailString
-  'photoEntity.MD5Hash = MD5(imageString)
+  photoEntity.WidthPixels = originalPhoto.Width
+  photoEntity.HeightPixels = originalPhoto.Height
 
   photoEntity = $photoRepository.createPhoto(photoEntity)
+
+  Try Kill tempThumbFile
 
   Return photoEntity
 
@@ -90,6 +115,39 @@ Public Sub DeletePhoto(photoId As Integer) As Boolean
 
 Catch
   $log4gambas.error("Ocurrio un problema al elimianar la foto")
+  Error.Propagate
+
+End
+
+Public Sub InsertSeedData()
+
+  Dim photoEntity As PhotoEntity
+
+  $log4gambas.Info("Insertando datos de prueba en tabla photos...")
+
+  photoEntity = ImportPhoto(Constants.PHOTO_SEED_1)
+
+  Wait 1 ' esperamos un poco para generacion de codigo
+
+  photoEntity = ImportPhoto(Constants.PHOTO_SEED_2)
+
+  $log4gambas.Info("Datos de prueba insertados exitosamente")
+
+Catch
+  If Error Then
+    $log4gambas.Error("Error insertando foto de prueba " & Error.Text)
+  Endif
+
+End
+
+Public Sub ToggleLibrary(lib As Integer) '' Metodo que sirve para cambiar la libreria activa
+
+  'Asignacion del valor
+  $configuration.SetWichLibrary(lib)
+  ' Notificar al contexto DB Accediendo a DBContext a través del Repository
+  $photoRepository.DBContext.SwitchLibrary()
+
+Catch
   Error.Propagate
 
 End

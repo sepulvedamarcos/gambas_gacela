@@ -1,15 +1,21 @@
 ' Gambas class file
 
+'
+'
+' Clase de acceso a datos en BD
+'
+'
 Private $log4Gambas As Log4Gambas3
 Private $dbContext As SQLiteContext
 Private $configuration As Configuration
+
+Property Read DBContext As SQLiteContext
 
 ' ==================================================
 '
 '          Metodos publicos
 '
 ' ==================================================
-
 Public Sub _new(configuration As Configuration, logger As Log4Gambas3, context As SQLiteContext)
 
   $log4Gambas = logger
@@ -32,17 +38,18 @@ Public Function getPhotos(Optional id As Integer) As PhotoEntity[]
     query = "AND id = " & id
   End If
 
-  photoResult = $dbContext.DBConnection.Find($configuration.TABLE_PHOTOS, query, False)
+  photoResult = $dbContext.DBConnection.Find(Constants.TABLE_PHOTOS, query, False)
 
   If photoResult.Available Then
     $log4Gambas.Debug("Extraccion de " & photoResult.Count & " fotos de la respuesta")
 
-    Return MapResultToEntity(photoResult)
+    Return MapResultToEntities(photoResult)
 
   Endif
 
 Catch
   $log4Gambas.Error("Problemas para recuperar las fotos " & Error.Text)
+  Error.Propagate
 
 End
 
@@ -50,11 +57,13 @@ Public Function createPhoto(photo As PhotoEntity) As PhotoEntity
 
   Dim result As Result
 
-  result = $dbContext.DBConnection.Create($configuration.TABLE_PHOTOS)
+  result = $dbContext.DBConnection.Create(Constants.TABLE_PHOTOS)
   result["id"] = $dbContext.CreateKey()
   result["file_name"] = photo.FileName
-  result["compressed_photo"] = photo.CompressedPhoto
+  result["original_photo"] = photo.OriginalPhoto
   result["thumbnail"] = photo.Thumbnail
+  result["width_pixels"] = photo.WidthPixels
+  result["height_pixels"] = photo.HeightPixels
   result["creation_date"] = Now()
   result["last_sync_date"] = Now()
   result["import_date"] = Now()
@@ -70,7 +79,7 @@ End
 '
 ' ==================================================
 
-Private Function MapResultToEntity(result As Result) As PhotoEntity[] '' Mapeo privado dentro del Repository
+Private Function MapResultToEntities(result As Result) As PhotoEntity[] '' Mapeo privado dentro del Repository
 
   Dim photo As PhotoEntity
   Dim photos As New PhotoEntity[]
@@ -81,28 +90,25 @@ Private Function MapResultToEntity(result As Result) As PhotoEntity[] '' Mapeo p
     ' Mapear todos los campos
     photo.Id = result["id"]
     photo.FileName = result["file_name"]
-    ' photo.MD5Hash = result["md5_hash"]
-    ' photo.OriginalSize = result["original_size"]
-    ' photo.CompressedSize = result["compressed_size"]
-    ' photo.WidthPixels = result["width_pixels"]
-    ' photo.HeightPixels = result["height_pixels"]
-    ' photo.OriginalFormat = result["original_format"]
+    photo.WidthPixels = IIf(result["width_pixels"] <> Null, result["width_pixels"], 0)
+    photo.HeightPixels = IIf(result["height_pixels"] <> Null, result["height_pixels"], 0)
     photo.CreationDate = result["creation_date"]
-    ' photo.ImportDate = result["import_date"]
+    photo.ImportDate = result["import_date"]
     photo.Description = result["description"]
-    ' photo.IsFavorite = result["is_favorite"]
-    ' photo.ImportUser = result["import_user"]
-    ' photo.SoftDelete = Not result["soft_delete"]
-    photo.CompressedPhoto = result["compressed_photo"]
-    ' photo.Thumbnail = result["thumbnail"]
-    ' photo.CompressionLevel = result["compression_level"]
-    ' photo.LastSyncDate = result["last_sync_date"]
+    photo.ImportUser = result["import_user"]
+    photo.OriginalPhoto = result["original_photo"]
+    photo.Thumbnail = result["thumbnail"]
+    photo.LastSyncDate = result["last_sync_date"]
+    photo.SoftDelete = result["soft_delete"]
 
     photos.Add(photo)
 
   Next
 
   Return photos
+
+Catch
+  Error.Propagate
 
 End
 
@@ -125,5 +131,11 @@ Private Sub MapEntityToResult(photo As PhotoEntity, result As Result) '' Mapeo p
   result["thumbnail"] = photo.Thumbnail
   result["compression_level"] = photo.CompressionLevel
   result["last_sync_date"] = photo.LastSyncDate
+
+End
+
+Private Function DBContext_Read() As SQLiteContext
+
+  Return $dbContext
 
 End

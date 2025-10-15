@@ -1,5 +1,10 @@
 ' Gambas class file
 
+'
+'
+' Clase de manejo de compresion de archivos
+'
+'
 Private $log4gambas As Log4Gambas3
 Private $configuration As Configuration
 
@@ -7,5 +12,34 @@ Public Sub _new(configuration As Configuration, logger As Log4Gambas3)
 
   $configuration = configuration
   $log4gambas = logger
+
+End
+
+' Comprime una imagen y devuelve string comprimido
+Public Function CompressImage(imageToCompress As String, Optional quality As Integer = 0) As String
+
+  ' Dim Cz As New Compress
+  ' Dim Buf As String
+  '
+  ' Dim imageCompress As String
+  '
+  ' $log4gambas.Debug("Comprimiendo imagen con calidad " & quality & "%")
+  '
+  ' Cz.Type = "zlib"
+  ' imageCompress = Cz.String(imageToCompress, Cz.Max, True)
+  '
+  ' If Len(imageCompress) < Len(imageToCompress) Then
+  '   Print "Compression successfully finished"
+  ' Else
+  '   Print "Unable to compress that string"
+  ' End If
+
+  ' $log4gambas.Debug("Imagen comprimida.")
+
+  Return ""
+
+Catch
+  $log4gambas.Error("Error comprimiendo imagen : " & Error.Text)
+  Error.Propagate
 
 End

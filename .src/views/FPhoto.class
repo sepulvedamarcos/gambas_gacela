@@ -8,8 +8,45 @@ Public Sub _new(photo As PhotoEntity)
 
   $photo = photo
 
-  LabelPhotoName.Text = $photo.FileName
-  LabelPhotoDescription.Text = $photo.Description
-  PictureBoxPhoto.Image = Image.FromString($photo.CompressedPhoto)
+  If photo.HasThumbnail Then
+    PictureBoxPhoto.Image = Image.FromString($photo.Thumbnail)
+  Else
+    PictureBoxPhoto.Image = Image.FromString($photo.OriginalPhoto)
+  Endif
+
+  Me.Height = Me.Parent.Height
+  Me.Width = Me.Parent.Width
+
+End
+
+Public Sub Form_Open()
+
+End
+
+Public Sub Form_Resize()
+
+  Me.Height = Me.Parent.Height
+  Me.Width = Me.Parent.Width
+
+End
+
+Public Sub Form_Arrange()
+
+  Me.Height = Me.Parent.Height
+  Me.Width = Me.Parent.Width
+
+End
+
+Public Sub Form_Activate()
+
+  Me.Height = Me.Parent.Height
+  Me.Width = Me.Parent.Width
+
+End
+
+Public Sub Form_State()
+
+  Me.Height = Me.Parent.Height
+  Me.Width = Me.Parent.Width
 
 End
