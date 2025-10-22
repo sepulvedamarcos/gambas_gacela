@@ -4,6 +4,7 @@
 ' Gambas class file - PhotoEntity
 ' Modelo de dominio para representar una foto en Gacela
 '
+
 ' Propiedades privadas del modelo
 Private $id As Integer = 0
 Private $fileName As String = ""
@@ -11,13 +12,21 @@ Private $widthPixels As Integer = 0
 Private $heightPixels As Integer = 0
 Private $creationDate As Date
 Private $importDate As Date
-Private $lastSyncDate As Date
-Private $stars As Integer = 0
 Private $description As String = ""
+Private $stars As Integer = 0
 Private $importUser As String = ""
-Private $originalPhoto As String
+Private $imagePath As String = ""
+Private $hash256 As String = ""
 Private $thumbnail As String
+Private $lastSyncDate As Date
+Private $syncStatus As String = "pending"
 Private $softDelete As Boolean = False
+Private $softDeleteDate As Date
+Private $softDeleteBy As String = ""
+Private $softDeleteAuto As Date
+Private $isLocked As Boolean = False
+Private $lockedBy As String = ""
+Private $lockReason As String = ""
 ' =============================================
 '
 '            PROPIEDADES PÚBLICAS
@@ -29,14 +38,21 @@ Property WidthPixels As Integer           '' Ancho en píxeles
 Property HeightPixels As Integer          '' Alto en píxeles
 Property CreationDate As Date             '' Fecha de creación de la foto (desde metadatos EXIF)
 Property ImportDate As Date               '' Fecha de importación a Gacela
-Property LastSyncDate As Date             '' Ultima fecha de sincronizacion
-Property Stars As Integer                 '' Indicador de estrellas de la foto
 Property Description As String            '' Descripción de la foto
+Property Stars As Integer                 '' Indicador de estrellas de la foto
 Property ImportUser As String             '' Usuario que importó la foto
-Property OriginalPhoto As String          '' Foto
+Property ImagePath As String
+Property Hash256 As String
 Property Thumbnail As String              '' Miniatura
-Property SoftDelete As Boolean            '' Estado activo (soft delete)
-Property Read HasThumbnail As Boolean     '' Indicador de tenencia de miniatura
+Property LastSyncDate As Date             '' Ultima fecha de sincronizacion
+Property SyncStatus As String
+Property SoftDelete As Boolean
+Property SoftDeleteDate As Date
+Property SoftDeleteBy As String
+Property SoftDeleteAuto As Date
+Property IsLocked As Boolean
+Property LockedBy As String
+Property Lockreason As String
 
 '=================================================
 '
@@ -203,5 +219,125 @@ End
 Private Sub Stars_Write(Value As Integer)
 
   $stars = value
+
+End
+
+Private Function ImageUser_Read() As String
+
+  Return $imageUser
+
+End
+
+Private Sub ImageUser_Write(Value As String)
+
+  $imageUser = value
+
+End
+
+Private Function ImagePath_Read() As String
+
+  Return $imagePath
+
+End
+
+Private Sub ImagePath_Write(Value As String)
+
+  $imagePath = value
+
+End
+
+Private Function Hash256_Read() As String
+
+  Return $hash256
+
+End
+
+Private Sub Hash256_Write(Value As String)
+
+  $hash256 = value
+
+End
+
+Private Function SyncStatus_Read() As String
+
+  Return $syncStatus
+
+End
+
+Private Sub SyncStatus_Write(Value As String)
+
+  $syncStatus = value
+
+End
+
+Private Function SoftDeleteDate_Read() As Date
+
+  Return $softDeleteDate
+
+End
+
+Private Sub SoftDeleteDate_Write(Value As Date)
+
+  $softDeleteDate = value
+
+End
+
+Private Function SoftDeleteBy_Read() As String
+
+  Return $softDeleteBy
+
+End
+
+Private Sub SoftDeleteBy_Write(Value As String)
+
+  $softDeleteBy = value
+
+End
+
+Private Function SoftDeleteAuto_Read() As Date
+
+  Return $softDeleteAuto
+
+End
+
+Private Sub SoftDeleteAuto_Write(Value As Date)
+
+  $softDeleteAuto = value
+
+End
+
+Private Function IsLocked_Read() As Boolean
+
+  Return $isLocked
+
+End
+
+Private Sub IsLocked_Write(Value As Boolean)
+
+  $isLocked = value
+
+End
+
+Private Function LockedBy_Read() As String
+
+  Return $lockedBy
+
+End
+
+Private Sub LockedBy_Write(Value As String)
+
+  $lockedBy = value
+
+End
+
+Private Function Lockreason_Read() As String
+
+  Return $lockReason
+
+End
+
+Private Sub Lockreason_Write(Value As String)
+
+  $lockReason = value
 
 End

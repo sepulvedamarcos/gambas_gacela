@@ -40,67 +40,6 @@ Public Function GetAllPhotos() As PhotoEntity[]
 
 End
 
-Public Function ImportPhoto(imagenPath As String) As PhotoEntity
-
-  Dim photoEntity As New PhotoEntity
-  Dim originalPhoto As Image
-  Dim imageString As String
-  Dim compressedZip As String
-  Dim thumbnailImage As Image
-  Dim tempThumbFile As String
-  Dim thumbnailString As String = ""
-  Dim extension As String
-  Dim filename As String
-  Dim reduction As Integer
-
-  ' Cargar imagen original
-  originalPhoto = Image.Load(imagenPath)
-  imageString = File.Load(imagenPath)
-
-  $log4gambas.Debug("Tamaño de la imagen " & originalPhoto.Width & " x " & originalPhoto.Height)
-
-  If originalPhoto.Width <= 255 Or originalPhoto.Height <= 255 Then
-    $log4gambas.Debug("imagen es menor que rango aceptable va sin miniatura")
-  Else
-    reduction = originalPhoto.Width / 0.125
-    If reduction <= THUMBNAIL_MIN_BENEFIT Then
-      $log4gambas.Debug("Reducción mínima (" & Format(reduction, "0.00") & "px), no generar thumbnail")
-    Else
-      $log4gambas.Debug("Thumbnail beneficioso: " & originalPhoto.Width & "px → " & "(reducción " & Format(reduction, "0.00") & "x)")
-
-      ' Generar thumbnail
-      thumbnailImage = originalPhoto.Stretch(320, -1)
-      ' Guardar temporalmente
-      tempThumbFile = Temp() & "." & extension
-      thumbnailString = thumbnailImage.ToString(extension, 100)
-      File.Save(tempThumbFile, thumbnailString)
-
-      ' Miniatura lista para guardar
-      thumbnailString = File.Load(tempThumbFile)
-
-    Endif
-
-  Endif
-
-  ' Comprimir imagen completa a ZIP
-  photoEntity.FileName = File.Ext(imagenPath) & "." & File.BaseName(imagenPath)
-  photoEntity.OriginalPhoto = imageString
-  photoEntity.Thumbnail = thumbnailString
-  photoEntity.WidthPixels = originalPhoto.Width
-  photoEntity.HeightPixels = originalPhoto.Height
-
-  photoEntity = $photoRepository.createPhoto(photoEntity)
-
-  Try Kill tempThumbFile
-
-  Return photoEntity
-
-Catch
-  $log4gambas.Error("Error importando foto: " & Error.Text)
-  Error.Propagate
-
-End
-
 Public Function ToggleFavorite(photoId As Integer, stars As Integer) As Boolean
 
   Dim photo As PhotoEntity
@@ -119,16 +58,14 @@ Catch
 
 End
 
-Public Sub InsertSeedData()
+Public Sub InsertSeedData() '' Metodo que permite inicializar la base de datos con 2 fotos
 
   Dim photoEntity As PhotoEntity
 
   $log4gambas.Info("Insertando datos de prueba en tabla photos...")
 
   photoEntity = ImportPhoto(Constants.PHOTO_SEED_1)
-
   Wait 1 ' esperamos un poco para generacion de codigo
-
   photoEntity = ImportPhoto(Constants.PHOTO_SEED_2)
 
   $log4gambas.Info("Datos de prueba insertados exitosamente")
@@ -157,3 +94,66 @@ End
 '          Metodos privados
 '
 ' ==================================================
+
+Private Function ImportPhoto(imagenPath As String, description As String) As PhotoEntity
+
+  Dim photoEntity As New PhotoEntity
+  Dim originalPhoto As Image
+  Dim imageString As String
+  Dim compressedZip As String
+  Dim thumbnailImage As Image
+  Dim tempThumbFile As String
+  Dim thumbnailString As String = ""
+  Dim extension As String
+  Dim filename As String
+  Dim reduction As Integer
+
+  ' Cargar imagen original
+  originalPhoto = Image.Load(imagenPath)
+  imageString = File.Load(imagenPath)
+
+  $log4gambas.Debug("Tamaño de la imagen " & originalPhoto.Width & " x " & originalPhoto.Height)
+
+  If originalPhoto.Width <= 255 Or originalPhoto.Height <= 255 Then
+    $log4gambas.Debug("imagen es menor que rango aceptable va sin miniatura")
+  Else
+    reduction = originalPhoto.Width / 0.125
+    If reduction <= THUMBNAIL_MIN_BENEFIT Then
+      $log4gambas.Debug("Reducción mínima (" & Format(reduction, "0.00") & "px), no generar thumbnail")
+    Else
+      $log4gambas.Debug("Thumbnail beneficioso: " & originalPhoto.Width & "px → " & "(reducción " & Format(reduction, "0.00") & "x)")
+
+      thumbnailImage = originalPhoto.Stretch(320, -1)
+      tempThumbFile = Temp() & "." & extension
+      thumbnailString = thumbnailImage.ToString(extension, 100)
+      File.Save(tempThumbFile, thumbnailString)
+
+      thumbnailString = File.Load(tempThumbFile)
+
+    Endif
+
+  Endif
+
+  photoEntity.FileName = File.BaseName(imagenPath) & "." & File.Ext(imagenPath)
+  photoEntity.WidthPixels = originalPhoto.Width
+  photoEntity.HeightPixels = originalPhoto.Height
+  photoEntity.ImportDate = Now()
+  photoEntity.Description = descripcion
+  photoEntity.Stars = 0
+  photoEntity.ImportUser = User.Name
+  photoEntity.ImagePath = $compressionService.SaveImageIO(imagenPath)
+  photoEntity.Hash256 = $compressionService.hash256Calculate(imagenPath)
+  photoEntity.Thumbnail = thumbnailString
+  photoEntity.SyncStatus
+
+  photoEntity = $photoRepository.createPhoto(photoEntity)
+
+  Try Kill tempThumbFile
+
+  Return photoEntity
+
+Catch
+  $log4gambas.Error("Error importando foto: " & Error.Text)
+  Error.Propagate
+
+End

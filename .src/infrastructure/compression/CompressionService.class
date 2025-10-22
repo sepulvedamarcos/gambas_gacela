@@ -8,6 +8,11 @@
 Private $log4gambas As Log4Gambas3
 Private $configuration As Configuration
 
+' ==================================================
+'
+'          Metodos publicos
+'
+' ==================================================
 Public Sub _new(configuration As Configuration, logger As Log4Gambas3)
 
   $configuration = configuration
@@ -15,31 +20,18 @@ Public Sub _new(configuration As Configuration, logger As Log4Gambas3)
 
 End
 
-' Comprime una imagen y devuelve string comprimido
-Public Function CompressImage(imageToCompress As String, Optional quality As Integer = 0) As String
+Public Function SaveImageIO(originalImage As String) As String
 
-  ' Dim Cz As New Compress
-  ' Dim Buf As String
-  '
-  ' Dim imageCompress As String
-  '
-  ' $log4gambas.Debug("Comprimiendo imagen con calidad " & quality & "%")
-  '
-  ' Cz.Type = "zlib"
-  ' imageCompress = Cz.String(imageToCompress, Cz.Max, True)
-  '
-  ' If Len(imageCompress) < Len(imageToCompress) Then
-  '   Print "Compression successfully finished"
-  ' Else
-  '   Print "Unable to compress that string"
-  ' End If
+  Dim newPath As String
 
-  ' $log4gambas.Debug("Imagen comprimida.")
+  Return newPath
 
-  Return ""
+End
 
-Catch
-  $log4gambas.Error("Error comprimiendo imagen : " & Error.Text)
-  Error.Propagate
+Public Function hash256Calculate(originalImage As String) As String
+
+  Dim hash256 As String = ""
+
+  Return hash256
 
 End

@@ -22,12 +22,6 @@ Public Sub Main()
   ' Inicializa el entorno segun lo definido en el settings
   $configuration.InitializeEnvironment()
 
-  ' Verificamos biblioteca compartida y privilegios. Si no existe se crean
-  If Not IsSharedLibraryAvailable() Then
-    Message.Warning("Biblioteca compartida no esta configurada")
-    Quit
-  End If
-
   ' Inicializacion e inyectores
   $connDB = New SQLiteContext($configuration, $log4gambas)
   ' Crea la clase de capa repository
@@ -49,45 +43,5 @@ Public Sub Main()
 Catch
   Print "Se detecto un problema grave y se detendra la aplicación " & Error.Text
   Message.Error("Se detecto un problema grave y se detendra la aplicación " & Error.Text)
-
-End
-
-Private Function IsSharedLibraryAvailable() As Boolean
-
-  Dim hasGroup As Boolean
-  Dim hasDirectory As Boolean
-  Dim hasPermissions As Boolean
-  Dim groupAvailable As String
-
-  ' Verificar que existe el grupo
-  Shell "getent group " & Constants.GRUPO_GACELA To groupAvailable
-  If groupAvailable = "" Then
-    Return False
-  Endif
-
-  ' Verificar que el usuario esta en el grupo
-  If InStr(groupAvailable, User.Name) <= 0 Then
-    Return False
-  Endif
-
-  ' Verificar que existe el directorio
-  If Not Exist(Constants.GACELA_DIRECTORY_SHARED) Then
-    Return False
-  Endif
-
-  ' Verificar permisos de escritura
-  If Exist(Constants.GACELA_DIRECTORY_SHARED) Then
-    Try File.Save(Constants.GACELA_DIRECTORY_SHARED &/ ".test", "test")
-    If Error Then Return False
-    Try Kill Constants.GACELA_DIRECTORY_SHARED &/ ".test"
-  Endif
-
-  'sudo Chown -R root:gacela - users/usr/share/gacela && \
-  'sudo Chmod 755 /usr/share/gacela && \
-  'sudo Chmod -R 775 /usr/share/gacela/biblioteca && \
-  'sudo find /usr/share/gacela/biblioteca -type d -exec Chmod g+s {} \; && \
-  'echo "Permisos configurados correctamente"
-
-  Return True
 
 End

@@ -58,17 +58,29 @@ Public Function createPhoto(photo As PhotoEntity) As PhotoEntity
   Dim result As Result
 
   result = $dbContext.DBConnection.Create(Constants.TABLE_PHOTOS)
-  result["id"] = $dbContext.CreateKey()
+
   result["file_name"] = photo.FileName
-  result["original_photo"] = photo.OriginalPhoto
-  result["thumbnail"] = photo.Thumbnail
   result["width_pixels"] = photo.WidthPixels
   result["height_pixels"] = photo.HeightPixels
   result["creation_date"] = Now()
-  result["last_sync_date"] = Now()
-  result["import_date"] = Now()
-  result["import_user"] = User.Name
+  result["import_date"] = photo.ImportDate
+  result["description"] = photo.Description
+  result["stars"] = photo.Stars
+  result["import_user"] = photo.ImportUser
+  result["image_path"] = photo.ImagePath
+  result["hash256"] = photo.Hash256
+  result["thumbnail"] = photo.Thumbnail
+  result["last_sync_date"] = Null
+  result["sync_status"] = "pending"
   result["soft_delete"] = False
+  result["soft_deleted_date"] = Null
+  result["soft_deleted_by"] = Null
+  result["soft_deleted_auto"] = Null
+  result["is_locked"] = False
+  result["locked_by"] = Null
+  result["locked_date"] = Null
+  result["lock_reason"] = Null
+
   result.Update()
 
 End
