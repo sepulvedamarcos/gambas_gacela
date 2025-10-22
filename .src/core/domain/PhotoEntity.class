@@ -180,18 +180,6 @@ Sub SoftDelete_Write(value As Boolean)
 
 End
 
-Function OriginalPhoto_Read() As String
-
-  Return $originalPhoto
-
-End
-
-Sub OriginalPhoto_Write(value As String)
-
-  $originalPhoto = value
-
-End
-
 Function Thumbnail_Read() As String
 
   Return $thumbnail
@@ -219,18 +207,6 @@ End
 Private Sub Stars_Write(Value As Integer)
 
   $stars = value
-
-End
-
-Private Function ImageUser_Read() As String
-
-  Return $imageUser
-
-End
-
-Private Sub ImageUser_Write(Value As String)
-
-  $imageUser = value
 
 End
 

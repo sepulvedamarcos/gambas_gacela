@@ -23,8 +23,21 @@ End
 Public Function SaveImageIO(originalImage As String) As String
 
   Dim newPath As String
+  Dim basename As String
+
+  newPath = $configuration.LibraryPath &/ Str(Year(Now)) & Str(Month(Now)) & Str(Day(Now))
+  basename = File.BaseName(originalImage) & "." & File.Ext(originalImage)
+
+  If Not Exist(newPath) Then
+    Mkdir newPath
+  Endif
+
+  Copy originalImage To newPath &/ basename
 
   Return newPath
+
+Catch
+  Error.Propagate
 
 End
 

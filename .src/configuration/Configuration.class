@@ -194,7 +194,7 @@ Private Function LibraryPath_Read() As String
 
 End
 
-Function IsSharedLibraryAvailable() As Boolean
+Function IsSharedLibraryAvailable_Read() As Boolean
 
   Dim hasGroup As Boolean
   Dim hasDirectory As Boolean

@@ -64,9 +64,9 @@ Public Sub InsertSeedData() '' Metodo que permite inicializar la base de datos c
 
   $log4gambas.Info("Insertando datos de prueba en tabla photos...")
 
-  photoEntity = ImportPhoto(Constants.PHOTO_SEED_1)
+  photoEntity = ImportPhoto(Constants.PHOTO_SEED_1, "Foto 1")
   Wait 1 ' esperamos un poco para generacion de codigo
-  photoEntity = ImportPhoto(Constants.PHOTO_SEED_2)
+  photoEntity = ImportPhoto(Constants.PHOTO_SEED_2, "Foto 2")
 
   $log4gambas.Info("Datos de prueba insertados exitosamente")
 
@@ -117,34 +117,25 @@ Private Function ImportPhoto(imagenPath As String, description As String) As Pho
   If originalPhoto.Width <= 255 Or originalPhoto.Height <= 255 Then
     $log4gambas.Debug("imagen es menor que rango aceptable va sin miniatura")
   Else
-    reduction = originalPhoto.Width / 0.125
-    If reduction <= THUMBNAIL_MIN_BENEFIT Then
-      $log4gambas.Debug("Reducción mínima (" & Format(reduction, "0.00") & "px), no generar thumbnail")
-    Else
-      $log4gambas.Debug("Thumbnail beneficioso: " & originalPhoto.Width & "px → " & "(reducción " & Format(reduction, "0.00") & "x)")
+    $log4gambas.Debug("Thumbnail beneficioso: " & originalPhoto.Width & "px → " & "(reducción " & Format(reduction, "0.00") & "x)")
 
-      thumbnailImage = originalPhoto.Stretch(320, -1)
-      tempThumbFile = Temp() & "." & extension
-      thumbnailString = thumbnailImage.ToString(extension, 100)
-      File.Save(tempThumbFile, thumbnailString)
-
-      thumbnailString = File.Load(tempThumbFile)
-
-    Endif
-
+    thumbnailImage = originalPhoto.Stretch(320, -1)
+    tempThumbFile = Temp() & "." & extension
+    thumbnailString = thumbnailImage.ToString(extension, 100)
+    File.Save(tempThumbFile, thumbnailString)
+    thumbnailString = File.Load(tempThumbFile)
   Endif
 
   photoEntity.FileName = File.BaseName(imagenPath) & "." & File.Ext(imagenPath)
   photoEntity.WidthPixels = originalPhoto.Width
   photoEntity.HeightPixels = originalPhoto.Height
   photoEntity.ImportDate = Now()
-  photoEntity.Description = descripcion
+  photoEntity.Description = description
   photoEntity.Stars = 0
   photoEntity.ImportUser = User.Name
   photoEntity.ImagePath = $compressionService.SaveImageIO(imagenPath)
   photoEntity.Hash256 = $compressionService.hash256Calculate(imagenPath)
   photoEntity.Thumbnail = thumbnailString
-  photoEntity.SyncStatus
 
   photoEntity = $photoRepository.createPhoto(photoEntity)
 

@@ -71,7 +71,7 @@ Public Function createPhoto(photo As PhotoEntity) As PhotoEntity
   result["hash256"] = photo.Hash256
   result["thumbnail"] = photo.Thumbnail
   result["last_sync_date"] = Null
-  result["sync_status"] = "pending"
+  result["sync_status"] = 0
   result["soft_delete"] = False
   result["soft_deleted_date"] = Null
   result["soft_deleted_by"] = Null

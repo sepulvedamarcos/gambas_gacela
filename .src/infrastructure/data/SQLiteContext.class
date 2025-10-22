@@ -191,7 +191,7 @@ Private Sub CreatePhotosTable()
   Dim table As Table
 
   table = $db.Tables.Add(Constants.TABLE_PHOTOS)
-  table.Fields.Add("id", db.Long)                         ' identificador del registro
+  table.Fields.Add("id", db.Serial)                         ' identificador del registro
   table.Fields.Add("file_name", db.String, 255)           ' Nombre original del archivo
   table.Fields.Add("width_pixels", db.Integer)            ' Ancho en píxeles
   table.Fields.Add("height_pixels", db.Integer)           ' Alto en píxeles
