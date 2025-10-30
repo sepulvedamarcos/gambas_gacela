@@ -1,0 +1,25 @@
+' Gambas module file
+
+' Constantes de la aplicación
+Public Const GACELA_DIRECTORY As String = ".config/gacela"      '' Ruta de la configuracion de gacela
+Public Const GACELA_DIRECTORY_SHARED As String = "/usr/share/gacela"    '' Ruta de la biblioteca compartida
+Public Const DATABASE_NAME As String = "gacela.db"              '' Nombre de la Base de datos
+Public Const DATABASE_SQLITE3 As String = "sqlite3"                 '' Tipo de la base de datos
+Public Const CONFIG_NAME As String = "gacela.conf"              '' Nombre del archivo de settings
+
+Public Const GRUPO_GACELA As String = "gacela-users"            '' Nombre del grupo de usuarios de gacela
+
+' Constantes de nombres de tablas
+Public Const TABLE_PHOTOS As String = "photos"                  '' Tabla de Fotos
+Public Const TABLE_ALBUMS As String = "albums"                  '' Tala de Albumes
+Public Const TABLE_TAGS As String = "tags"                      '' Tabla de Tags
+Public Const TABLE_PHOTOS_ALBUMS As String = "photo_albums"     '' Tabla de relacion Fotos-Album
+Public Const TABLE_PHOTOS_TAGS As String = "photos_tags"        '' Tabla de relacion Foto-Tag
+
+' Fotos semilla para iniciar la aplicacion
+Public Const PHOTO_SEED_1 As String = "./img-126.png"           '' Foto para iniciar aplicacion
+Public Const PHOTO_SEED_2 As String = "./img-125.png"           '' Foto para iniciar aplicacion
+
+' Textos para indicar estado de sincronizacion
+Public Const SYNC_PENDING As String = "Pendiente"               '' Estado de sincronizacion pendiente
+Public Const SYNC_SYNCED As String = "Sincronizado"             '' Estado de sincronizacion realizada

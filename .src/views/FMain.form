@@ -1,5 +1,144 @@
 # Gambas Form File 3.0
 
 { Form Form
-  MoveScaled(0,0,64,64)
+  MoveScaled(0,0,138,73)
+  Drop = True
+  Expand = True
+  Arrangement = Arrange.Horizontal
+  Padding = 4
+  { buscar Menu
+    Toggle = True
+    { nombre Menu
+      Text = ("nombre")
+      Checked = True
+    }
+  }
+  { HBox1 HBox
+    MoveScaled(0,0,137,72)
+    Expand = True
+    Spacing = True
+    { PanelIzquierdo Panel
+      MoveScaled(1,1,27,69)
+      Background = &HCDD9E4
+      Arrangement = Arrange.Row
+      { Label2 Label
+        MoveScaled(2,2,13,3)
+        Font = Font["Poppins,16"]
+        Text = ("Libreria")
+      }
+      { ToggleButtonPersonal ToggleButton
+        MoveScaled(0,6,27,5)
+        Text = ("Personal")
+        Radio = True
+      }
+      { ToggleButtonCompartida ToggleButton
+        MoveScaled(0,11,27,5)
+        Text = ("Compartida")
+        Radio = True
+      }
+      { Expander1 Expander
+        MoveScaled(1,18,24,26)
+        Font = Font["Poppins,16"]
+        Expand = True
+        Text = ("Albums")
+        { CheckBox1 CheckBox
+          MoveScaled(2,2,16,4)
+          Font = Font["Poppins,-1"]
+          Text = ("ererer")
+        }
+        { CheckBox2 CheckBox
+          MoveScaled(2,6,16,4)
+          Font = Font["Poppins,+1"]
+          Text = ("asdad")
+        }
+        { Button5 Button
+          MoveScaled(3,12,16,4)
+        }
+      }
+      { Expander2 Expander
+        MoveScaled(1,44,24,21)
+        Font = Font["Poppins,16"]
+        Expand = True
+        Text = ("Tags")
+      }
+    }
+    { PanelDerecho VBox
+      MoveScaled(29,1,102,69)
+      Expand = True
+      { PanelBusqueda Panel
+        MoveScaled(1,1,90,7)
+        Arrangement = Arrange.Horizontal
+        Padding = 8
+        { Label1 Label
+          MoveScaled(2,2,27,3)
+          Font = Font["Ubuntu Sans,Bold,10"]
+          Text = ("Photos en xxxx GRoup")
+        }
+        { MenuButton1 MenuButton
+          MoveScaled(25,1,20,4)
+          Text = (",mn,mn,nm")
+          Picture = Picture["icon:/medium/find"]
+          Menu = "buscar"
+        }
+        { ButtonBox1 ButtonBox
+          MoveScaled(46,1,43,5)
+          Expand = True
+          PopupMenu = "buscar"
+          Direction = Direction.LeftToRight
+          Picture = Picture["icon:/medium/find"]
+          ClearButton = True
+        }
+      }
+      { HBox2 Panel
+        MoveScaled(1,8,90,6)
+        Arrangement = Arrange.Horizontal
+        { HBox3 HBox
+          MoveScaled(1,0,8,6)
+          Background = Color.LightBackground
+          Expand = True
+        }
+        { Panel1 Panel
+          MoveScaled(40,0,50,6)
+          { ButtonZoomIn Button
+            MoveScaled(40,1,4,4)
+            Picture = Picture["icon:/medium/zoom-in"]
+          }
+          { ButtonZoomOut Button
+            MoveScaled(44,1,4,4)
+            Picture = Picture["icon:/medium/zoom-out"]
+          }
+          { SpinBoxPaginas SpinBox
+            MoveScaled(22,1,9,4)
+          }
+          { Button1 Button
+            MoveScaled(14,1,4,4)
+            Picture = Picture["icon:/medium/start"]
+          }
+          { Button2 Button
+            MoveScaled(35,1,4,4)
+            Picture = Picture["icon:/medium/end"]
+          }
+          { Button3 Button
+            MoveScaled(31,1,4,4)
+            Picture = Picture["icon:/medium/forward"]
+          }
+          { Button4 Button
+            MoveScaled(18,1,4,4)
+            Picture = Picture["icon:/medium/rewind"]
+          }
+        }
+      }
+      { !PanelDespliegue ScrollView
+        MoveScaled(1,17,90,27)
+        #Public = True
+        Expand = True
+        Arrangement = Arrange.Row
+        Spacing = True
+        Margin = True
+        Padding = 4
+        ScrollBar = Scroll.Vertical
+        Shadow = True
+      }
+    }
+  }
 }

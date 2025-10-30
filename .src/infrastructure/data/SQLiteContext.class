@@ -3,167 +3,185 @@
 ' Gambas class file - SQLiteContext para Gacela
 ' Maneja la conexión y esquema de la base de datos SQLite
 
-Public Const DB_NAME As String = "gacela.db"
-Public Const DB_TYPE As String = "sqlite3"
 Public Const SCHEMA_VERSION As Integer = 1
 
 Private $db As Connection
-Private $logger As Log4Gambas
-Private $databasePath As String
+Private $log4gambas As Log4Gambas3
+Private $configuration As Configuration
+Private $dbLibraryDirectory As String
 
 ' Property para acceso a la conexión
 Property Read DBConnection As Connection
 
-' Constructor que recibe la ruta completa y el logger
-Public Sub _new(databasePath As String, logger As Log4Gambas)
+' Constructor que recibe la ruta completa y el log4gambas
+Public Sub _new(configuration As Configuration, log4gambas As Log4Gambas3)
 
-  $logger = logger
-  $databasePath = databasePath & DB_NAME
+  $log4gambas = log4gambas
+  $configuration = configuration
 
-  $logger.Info("Inicializando contexto de base de datos SQLite")
-  $logger.Debug("Ruta de base de datos: " & $databasePath)
+  $log4gambas.Info("Inicializando contexto de base de datos SQLite")
 
-  InitializeDatabase()
-
-  ' If Error Then
-  '   $logger.Fatal("Error fatal inicializando base de datos: " & Error.Text)
-  '   ERROR.Propagate
-  ' Endif
+  ' Inicializar inmediatamente con la configuración activa
+  SwitchLibrary()
 
 End
 
+Public Sub SwitchLibrary() '' Nuevo método para cambiar la base de datos
+
+  Dim sNewLibraryPath As String
+
+  sNewLibraryPath = $configuration.LibraryPath
+
+  ' Solo reconectar si la ruta de la base de datos ha cambiado
+  If $dbLibraryDirectory = sNewLibraryPath Then
+    $log4gambas.Debug("La ruta de la librería no ha cambiado. No se requiere reconexión.")
+    Return
+  Endif
+
+  If $db Then
+    CloseConnection()
+  End If
+
+  $dbLibraryDirectory = sNewLibraryPath
+
+  $log4gambas.Info("Cambiando contexto de base de datos a: " & $dbLibraryDirectory)
+
+  InitializeDatabase()
+
+End
+
+Public Sub _free()
+
+  CloseConnection()
+
+End
+
+' ==================================================
+'
+'          Metodos privados
+'
+' ==================================================
 ' Inicializa la base de datos (crear si no existe, conectar)
-Public Sub InitializeDatabase()
+Private Sub InitializeDatabase()
 
-  $logger.Info("Estableciendo conexión a la base de datos Gacela")
+  $log4gambas.Info("Estableciendo conexión a la base de datos Gacela")
 
-  ' 1. Verificar si la base de datos ya existe
-  If Not Exist($databasePath) Then
+  ' Verificar si la base de datos ya existe
+  If Not Exist($dbLibraryDirectory &/ Constants.DATABASE_NAME) Then
+    $log4gambas.Warning("El archivo de base de datos no existe. Envia a crear: " & $dbLibraryDirectory &/ Constants.DATABASE_NAME)
     CreateDatabase()
   Endif
 
-  ' 2. Abrir la conexión a la base de datos
-  Try ConnectDatabase()
-  If Error Then ERROR.Propagate
+  ' Abrir la conexión a la base de datos
+  ConnectDatabase()
 
-  $logger.Info("Conexión a la base de datos establecida correctamente")
+  ' Ejecutar chequeo de existencia de tablas (rutina solicitada)
+  CheckAndCreateTables()
+
+  $log4gambas.Info("Conexión a la base de datos establecida correctamente")
+
+Catch
+  $log4gambas.Error("Se presento un error al Inicializar la base de datos " & Error.Text)
+  ERROR.Propagate
 
 End
 
 ' Crea la base de datos física usando el patrón nativo de Gambas
 Private Sub CreateDatabase()
 
-  Dim directoryPath As String = File.Dir($databasePath)
-  Dim fileName As String = File.Name($databasePath)
-
-  $logger.Warning("El archivo de base de datos no existe. Creando: " & $databasePath)
-
-  ' Crear conexión temporal para crear la BD
+  'Crear conexión temporal para crear la BD
   $db = New Connection
-  $db.Type = DB_TYPE
-  $db.Host = directoryPath
-  $db.Name = "" ' Liberamos el nombre para poder crear la BD física
+  $db.Type = Constants.DATABASE_SQLITE3
+  $db.Host = $dbLibraryDirectory
+  $db.Name = "" 'Liberamos el nombre para poder crear la BD física
 
   $db.Open()
-  ' If Error Then
-  '   $logger.Fatal("No se puede abrir conexión para crear BD: " & Error.Text)
-  '   ERROR.Propagate
-  ' Endif
-
-  ' Crear la base de datos si no existe
-  If Not $db.Databases.Exist(fileName) Then
-    $db.Databases.Add(fileName)
-    Wait 0.05 ' Pequeña pausa para asegurar creación
-    ' If Error Then
-    '   $logger.Fatal("No se puede crear base de datos: " & Error.Text)
-    '   $db.Close()
-    '   ERROR.Propagate
-    ' Endif
+  If Error Then
+    $log4gambas.Fatal("No se puede abrir conexión para crear BD: " & Error.Text)
+    ERROR.Propagate
   Endif
 
+  'Ya sabemos que el archivo de base de datos no existe, aqui preguntamos via connect
+  If Not $db.Databases.Exist(Constants.DATABASE_NAME) Then
+    'aqui ocurre la magia, se crea la base de datos
+    $db.Databases.Add(Constants.DATABASE_NAME)
+    Wait 0.05 ' Pequeña pausa para asegurar creación fisica del archivo
+    If Error Then
+      $log4gambas.Fatal("No se puede crear base de datos: " & Error.Text)
+      $db.Close()
+      ERROR.Propagate
+    Endif
+  Endif
+  ' cerramos la conexion para asegurar soltar la conexion y ahora usar el nombre
   $db.Close()
 
   ' Reconectar con el nombre de la BD y crear esquema
-  $db.Name = fileName
-
+  $db.Name = Constants.DATABASE_NAME
+  ' Volvemos a conectarnos
   $db.Open()
+  If Error Then
+    $log4gambas.Fatal("No se puede reabrir BD recién creada: " & Error.Text)
+    ERROR.Propagate
+  Endif
+
+  ' $log4gambas.Warning("Creando esquema de tablas para Gacela")
+  '
+  ' ' Crear todas las tablas usando el método nativo de Gambas
+  ' Try CreatePhotosTable()
   ' If Error Then
-  '   $logger.Fatal("No se puede reabrir BD recién creada: " & Error.Text)
+  '   $log4gambas.Error("Se presento un error al intentar crear tabla de fotos")
   '   ERROR.Propagate
   ' Endif
-
-  $logger.Warning("Creando esquema de tablas para Gacela")
-
-  ' Crear todas las tablas usando el método nativo de Gambas
-  Try CreateSchemaVersionTable()
-  If Error Then ERROR.Propagate
-
-  Try CreatePhotosTable()
-  If Error Then ERROR.Propagate
-
-  Try CreateAlbumsTable()
-  If Error Then ERROR.Propagate
-
-  Try CreatePhotosAlbumsTable()
-  If Error Then ERROR.Propagate
-
-  Try CreateTagsTable()
-  If Error Then ERROR.Propagate
-
-  Try CreatePhotosTagsTable()
-  If Error Then ERROR.Propagate
-
-  Try CreateConfigurationTable()
-  If Error Then ERROR.Propagate
+  '
+  ' Try CreateAlbumsTable()
+  ' If Error Then
+  '   $log4gambas.Error("Se presento un error al intentar crear tabla de albums")
+  '   ERROR.Propagate
+  ' End If
+  '
+  ' Try CreatePhotosAlbumsTable()
+  ' If Error Then
+  '   $log4gambas.Error("Se presento un error al intentar crear tabla de fotos-albums")
+  '   ERROR.Propagate
+  ' End If
+  '
+  ' Try CreateTagsTable()
+  ' If Error Then
+  '   $log4gambas.Error("Se presento un error al intentar crear tabla de tags")
+  '   ERROR.Propagate
+  ' End If
+  '
+  ' Try CreatePhotosTagsTable()
+  ' If Error Then
+  '   $log4gambas.Error("Se presento un error al intentar crear tabla de fotos-tags")
+  '   ERROR.Propagate
+  ' End If
 
   $db.Close()
-  $logger.Info("Base de datos creada exitosamente")
+  $log4gambas.Info("Base de datos creada exitosamente")
 
 End
 
 ' Conecta a la base de datos existente
 Private Sub ConnectDatabase()
 
-  Dim directoryPath As String = File.Dir($databasePath)
-  Dim fileName As String = File.Name($databasePath)
-
   $db = New Connection
-  $db.Type = Constants.DB_TYPE
-  $db.Host = directoryPath
-  $db.Name = fileName
+  $db.Type = Constants.DATABASE_SQLITE3
+  $db.Host = $dbLibraryDirectory
+  $db.Name = Constants.DATABASE_NAME
+
+  $log4gambas.Debug("Ruta de base de datos: " & $dbLibraryDirectory)
+  $log4gambas.Debug("nombre base de datos: " & Constants.DATABASE_NAME)
+  $log4gambas.Debug("Tipo base de datos: " & Constants.DATABASE_SQLITE3)
 
   Try $db.Open()
 
   If Error Then
-    $logger.Fatal("No se pudo conectar a la base de datos: " & Error.Text)
+    $log4gambas.Fatal("No se pudo conectar a la base de datos: " & Error.Text)
     ERROR.Propagate
   Endif
 
-  $logger.Debug("Conexión establecida con: " & directoryPath &/ fileName)
-
-End
-
-' Crea tabla de control de versiones usando método nativo
-Private Sub CreateSchemaVersionTable()
-
-  Dim table As Table
-
-  table = $db.Tables.Add(Constants.TABLE_SCHEMA_VERSION)
-  table.Fields.Add("id", db.Integer)
-  table.Fields.Add("version", db.Integer)
-  table.Fields.Add("applied_date", db.Date)
-  table.Fields.Add("description", db.String, 255)
-  table.PrimaryKey = ["id"]
-  table.Update()
-
-  $logger.Debug("Tabla '" & Constants.TABLE_SCHEMA_VERSION & "' creada")
-
-  ' Insertar versión inicial
-  Try $db.Exec("INSERT INTO " & Constants.TABLE_SCHEMA_VERSION & " (version, applied_date, description) VALUES (?, ?, ?)",
-    Constants.SCHEMA_VERSION, Now(), "Esquema inicial de Gacela v1.0")
-  If Error Then
-    $logger.Error("Error insertando versión inicial: " & Error.Text)
-  Endif
+  $log4gambas.Debug("Conexión establecida con: " & $dbLibraryDirectory &/ Constants.DATABASE_NAME)
 
 End
 
@@ -173,27 +191,34 @@ Private Sub CreatePhotosTable()
   Dim table As Table
 
   table = $db.Tables.Add(Constants.TABLE_PHOTOS)
-  table.Fields.Add("id", db.Integer)
+  table.Fields.Add("id", db.Serial)                         ' identificador del registro
   table.Fields.Add("file_name", db.String, 255)           ' Nombre original del archivo
-  table.Fields.Add("md5_hash", db.String, 32)             ' Hash MD5 único
-  table.Fields.Add("original_size", db.Long)              ' Tamaño original en bytes
-  table.Fields.Add("compressed_size", db.Long)            ' Tamaño después de compresión
   table.Fields.Add("width_pixels", db.Integer)            ' Ancho en píxeles
   table.Fields.Add("height_pixels", db.Integer)           ' Alto en píxeles
-  table.Fields.Add("original_format", db.String, 10)      ' Formato original (jpg, png, etc)
   table.Fields.Add("creation_date", db.Date)              ' Fecha de creación de la foto
   table.Fields.Add("import_date", db.Date)                ' Fecha de importación a Gacela
   table.Fields.Add("description", db.String)              ' Descripción de la foto
-  table.Fields.Add("is_favorite", db.Boolean)             ' Marcada como favorita
+  table.Fields.Add("stars", db.Integer)                   ' Cantidad de estrellas
   table.Fields.Add("import_user", db.String, 50)          ' Usuario que la importó
-  table.Fields.Add("active", db.Boolean)                  ' Activa (soft delete)
-  table.Fields.Add("compressed_photo", db.Blob)           ' ← FOTO COMPRIMIDA (BLOB)
-  table.Fields.Add("thumbnail", db.Blob)                  ' ← MINIATURA (BLOB)
-  table.Fields.Add("compression_level", db.Integer)       ' Nivel de compresión aplicado
-  table.PrimaryKey = ["id"]
+  table.Fields.Add("image_path", db.String, 255)          ' Ruta completa para obtencion de la imagen original
+  Table.Fields.Add("hash256", db.String, 255)             ' Hash 256 de la imagen para validar existencia
+  table.Fields.Add("thumbnail", db.Blob)                  ' MINIATURA (BLOB)
+  table.Fields.Add("last_sync_date", db.Date)             ' Fecha de ultima sincronizacion a Gacela (para futura sync con nube)
+  Table.Fields.Add("sync_status", db.Integer)             ' Indicador del estado de la sincronizacion
+  table.Fields.Add("soft_delete", db.Boolean)             ' Soft delete (garbage collector)
+  table.Fields.Add("soft_deleted_date", db.date)          ' Indica la fecha en que eliminada
+  table.Fields.Add("soft_deleted_by", db.String, 50)      ' Indica el usuario que elimino
+  Table.Fields.Add("soft_deleted_auto", db.Date)          ' Fecha en que debe ser eliminada fisicamente
+  table.Fields.Add("is_locked", db.Boolean)               ' Indica si esta bloquedad para eliminacion
+  table.Fields.Add("locked_by", db.String, 50)            ' Indica usuario que bloqueo la foto
+  table.Fields.Add("locked_date", db.date)                ' Indica la fecha en que fue bloqueada
+  table.Fields.Add("lock_reason", db.String, 200)         ' Razon por la que fue bloqueada
+  table.PrimaryKey = ["id"]                               ' Crea primary key
+  ' table.Indexes.Add("hashx", ["hash256"])                   ' Crea indice por Hash256
+  ' table.Indexes.Add("softx", ["soft_delete"])               ' Crea indice por Soft_delete
   table.Update()
 
-  $logger.Debug("Tabla '" & Constants.TABLE_PHOTOS & "' creada con campos BLOB")
+  $log4gambas.Debug("Tabla '" & Constants.TABLE_PHOTOS & "' creada")
 
 End
 
@@ -203,17 +228,17 @@ Private Sub CreateAlbumsTable()
   Dim table As Table
 
   table = $db.Tables.Add(Constants.TABLE_ALBUMS)
-  table.Fields.Add("id", db.Integer)
-  table.Fields.Add("name", db.String, 255)
-  table.Fields.Add("description", db.String)
-  table.Fields.Add("creation_date", db.Date)
-  table.Fields.Add("creation_user", db.String, 50)
-  table.Fields.Add("cover_photo_id", db.Integer)
-  table.Fields.Add("active", db.Boolean)
+  table.Fields.Add("id", db.Integer)                      ' Identificador del registro
+  table.Fields.Add("name", db.String, 255)                ' Nombre corto para el album
+  table.Fields.Add("description", db.String)              ' Descripcion identificadora del album
+  table.Fields.Add("creation_date", db.Date)              ' Fecha de creación del album
+  table.Fields.Add("creation_user", db.String, 50)        ' Usuario que creo el album
+  table.Fields.Add("thumbnail", db.Blob)                  ' ← MINIATURA (BLOB)
+  table.Fields.Add("soft_delete", db.Boolean)             ' Soft delete
   table.PrimaryKey = ["id"]
   table.Update()
 
-  $logger.Debug("Tabla '" & Constants.TABLE_ALBUMS & "' creada")
+  $log4gambas.Debug("Tabla '" & Constants.TABLE_ALBUMS & "' creada")
 
 End
 
@@ -223,15 +248,16 @@ Private Sub CreatePhotosAlbumsTable()
   Dim table As Table
 
   table = $db.Tables.Add(Constants.TABLE_PHOTOS_ALBUMS)
-  table.Fields.Add("id", db.Integer)
-  table.Fields.Add("photo_id", db.Integer)
-  table.Fields.Add("album_id", db.Integer)
-  table.Fields.Add("order_in_album", db.Integer)
-  table.Fields.Add("added_date", db.Date)
+  table.Fields.Add("id", db.Integer)                      ' Identificador del registro
+  table.Fields.Add("photo_id", db.Integer)                ' Identificador de foto asociada
+  table.Fields.Add("album_id", db.Integer)                ' Identificador de album asociado
+  table.Fields.Add("order_in_album", db.Integer)          ' Indicador de orden de la foto dentro del album
+  table.Fields.Add("added_date", db.Date)                 ' Fecha de agregación al album
+  table.Fields.Add("added_user", db.String, 50)           ' Usuario que agrego la relacion
   table.PrimaryKey = ["id"]
   table.Update()
 
-  $logger.Debug("Tabla '" & Constants.TABLE_PHOTOS_ALBUMS & "' creada")
+  $log4gambas.Debug("Tabla '" & Constants.TABLE_PHOTOS_ALBUMS & "' creada")
 
 End
 
@@ -241,108 +267,97 @@ Private Sub CreateTagsTable()
   Dim table As Table
 
   table = $db.Tables.Add(Constants.TABLE_TAGS)
-  table.Fields.Add("id", db.Integer)
-  table.Fields.Add("name", db.String, 100)
-  table.Fields.Add("description", db.String)
-  table.Fields.Add("color", db.String, 7)
-  table.Fields.Add("creation_date", db.Date)
+  table.Fields.Add("id", db.Integer)                    ' Identificador del registro
+  table.Fields.Add("name", db.String, 100)              ' Nombre del tag
+  table.Fields.Add("description", db.String)            ' Descripcion del tag
+  table.Fields.Add("color", db.String, 7)               ' Color de despliegue del tag
+  table.Fields.Add("creation_date", db.Date)            ' Fecha de creación
+  table.Fields.Add("creation_user", db.String, 50)      ' Usuario que creo el tag
   table.PrimaryKey = ["id"]
   table.Update()
 
-  $logger.Debug("Tabla '" & Constants.TABLE_TAGS & "' creada")
+  $log4gambas.Debug("Tabla '" & Constants.TABLE_TAGS & "' creada")
 
 End
 
-' Crea tabla de relación fotos-tags
 Private Sub CreatePhotosTagsTable()
 
   Dim table As Table
 
   table = $db.Tables.Add(Constants.TABLE_PHOTOS_TAGS)
-  table.Fields.Add("id", db.Integer)
-  table.Fields.Add("photo_id", db.Integer)
-  table.Fields.Add("tag_id", db.Integer)
-  table.Fields.Add("assigned_date", db.Date)
+  table.Fields.Add("id", db.Integer)                    ' Identificador del registro
+  table.Fields.Add("photo_id", db.Integer)              ' Identificador de foto relacionada
+  table.Fields.Add("tag_id", db.Integer)                ' Identificador de tag relacionado
+  table.Fields.Add("added_date", db.Date)               ' Fecha de agregacion
+  table.Fields.Add("added_user", db.String, 50)         ' Usuario que agrego la relacion
   table.PrimaryKey = ["id"]
   table.Update()
 
-  $logger.Debug("Tabla '" & Constants.TABLE_PHOTOS_TAGS & "' creada")
+  $log4gambas.Debug("Tabla '" & Constants.TABLE_PHOTOS_TAGS & "' creada")
 
 End
 
-' Crea tabla de configuración
-Private Sub CreateConfigurationTable()
+Private Sub CheckAndCreateTables()
 
-  Dim table As Table
+  ' Nota: Esta rutina debe ejecutarse DESPUÉS de establecer la conexión ($db debe estar abierto)
 
-  table = $db.Tables.Add(Constants.TABLE_CONFIGURATION)
-  table.Fields.Add("id", db.Integer)
-  table.Fields.Add("key", db.String, 100)
-  table.Fields.Add("value", db.String)
-  table.Fields.Add("description", db.String)
-  table.Fields.Add("modified_date", db.Date)
-  table.PrimaryKey = ["id"]
-  table.Update()
+  $log4gambas.Debug("Comprobando la existencia de las tablas del esquema...")
 
-  $logger.Debug("Tabla '" & Constants.TABLE_CONFIGURATION & "' creada")
+  ' 1. Tabla de Fotos (photos)
+  If Not $db.Tables.Exist(Constants.TABLE_PHOTOS) Then
+    $log4gambas.Warning("La tabla '" & Constants.TABLE_PHOTOS & "' no existe. Creando...")
+    CreatePhotosTable()
+  Endif
 
-End
+  ' 2. Tabla de Albumes (albums)
+  If Not $db.Tables.Exist(Constants.TABLE_ALBUMS) Then
+    $log4gambas.Warning("La tabla '" & Constants.TABLE_ALBUMS & "' no existe. Creando...")
+    CreateAlbumsTable()
+  Endif
 
-' Crea una clave única basada en timestamp Unix (como tu ejemplo)
-Private Function CreateKey() As Long
+  ' 3. Tabla de Tags (tags)
+  If Not $db.Tables.Exist(Constants.TABLE_TAGS) Then
+    $log4gambas.Warning("La tabla '" & Constants.TABLE_TAGS & "' no existe. Creando...")
+    CreateTagsTable()
+  Endif
 
-  Dim currentDate As Date
-  Dim elapsedTime As Long
+  ' 4. Tabla de Relación Fotos-Album (photo_albums)
+  If Not $db.Tables.Exist(Constants.TABLE_PHOTOS_ALBUMS) Then
+    $log4gambas.Warning("La tabla '" & Constants.TABLE_PHOTOS_ALBUMS & "' no existe. Creando...")
+    CreatePhotosAlbumsTable() ' Asumo que este método existe
+  Endif
 
-  ' Crear timestamp Unix actual
-  currentDate = Now()
-  elapsedTime = DateDiff("1/1/1970", currentDate, gb.Second)
+  ' 5. Tabla de Relación Foto-Tag (photos_tags)
+  If Not $db.Tables.Exist(Constants.TABLE_PHOTOS_TAGS) Then
+    $log4gambas.Warning("La tabla '" & Constants.TABLE_PHOTOS_TAGS & "' no existe. Creando...")
+    CreatePhotosTagsTable()
+  Endif
 
-  $logger.Debug("Nueva clave generada: " & elapsedTime)
+  $log4gambas.Debug("Comprobación y creación de tablas finalizada.")
 
-  Return elapsedTime
-
-End
-
-' Método para obtener estadísticas básicas
-Public Function CountPhotos() As Integer
-
-  Dim result As Result
-  Dim total As Integer = 0
-  '
-  '   Try
-  '   result = $db.Exec("SELECT COUNT(*) as total FROM " & Constants.TABLE_PHOTOS & " WHERE active = ?", True)
-  '   If result.Available Then
-  '     total = result["total"]
-  '   Endif
-  ' Catch
-  '   $logger.Error("Error contando fotos: " & Error.Text)
-  '   End Try
-
-  Return total
+Catch
+  $log4gambas.Error("Fallo en la comprobación/creación de tablas: " & Error.Text)
+  Error.Raise("Fallo en la comprobación/creación de tablas: " & Error.Text)
 
 End
 
-' Property para acceder a la conexión
-Function DBConnection_Read() As Connection
-
-  Return $db
-
-End
-
-' Método para cerrar conexión
-Public Sub CloseConnection()
+Private Sub CloseConnection()
 
   If $db And $db.Opened Then
     Try $db.Close()
-    $logger.Info("Conexión a base de datos cerrada")
+    $log4gambas.Info("Conexión a base de datos cerrada")
   Endif
 
 End
 
-' Destructor
-Public Sub _free()
+' ====================================================
+'
+' Property para acceder a la conexión
+'
+' ====================================================
 
-  CloseConnection()
+Function DBConnection_Read() As Connection
+
+  Return $db
 
 End

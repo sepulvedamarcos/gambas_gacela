@@ -1,11 +1,120 @@
 ' Gambas class file
 
-$logger As Log4Gambas
-$connDb As SQLiteContext
+Private $width As Integer = 160
+Private $height As Integer = 90
 
-Public Sub Form_Open(logger As Log4Gambas)
+Private $configuration As Configuration
+Private $log4Gambas As Log4Gambas3
+Private $photoService As PhotoService
+Private $formPhotos As FPhoto
 
-  $logger = logger
-  $logger.Debug("en formulario")
+Public Sub _new(configuration As Configuration, logger As Log4Gambas3, photoService As PhotoService)
+
+  $configuration = configuration
+  $log4Gambas = logger
+  $photoService = photoService
+
+End
+
+Public Sub Form_Open()
+
+  $log4Gambas.Debug("en formulario open obtenemos los registros de fotos")
+  ToggleButtonPersonal.Value = IIf($configuration.whichLibrary = Enumeration.LibraryType_Private, True, False)
+  If $configuration.whichLibrary = Enumeration.LibraryType_Private Then
+    ToggleButtonPersonal.Picture = Picture.Load("icon:/medium/apply")
+  Endif
+
+  ToggleButtonCompartida.Value = IIf($configuration.whichLibrary = Enumeration.LibraryType_Private, False, True)
+  If $configuration.whichLibrary = Enumeration.LibraryType_Shared Then
+    ToggleButtonCompartida.Picture = Picture.Load("icon:/medium/apply")
+  Endif
+
+  CreatePhotoPanels($photoService.GetAllPhotos())
+
+End
+
+Public Sub Form_Drop()
+
+  Dim clearData As String
+  Dim dropping As Variant
+  Dim fileDrop As String[]
+  Dim fileOne As String
+  Dim cuente As Variant
+
+  $log4Gambas.Debug("Activa drop")
+
+  fileDrop = Drag.Paste("text/uri-list")
+
+  For Each fileOne In fileDrop
+    $log4Gambas.Debug("archivo : " & fileOne)
+
+    $photoService.ImportPhoto(fileOne, "")
+  Next
+
+  panelDespliegue.Children.Clear
+  CreatePhotoPanels($photoService.GetAllPhotos())
+
+End
+
+Private Sub CreatePhotoPanels(photos As PhotoEntity[])
+
+  Dim PanelPhoto As Panel
+  Dim formphoto As FPhoto
+  Dim photo As PhotoEntity
+
+  ' TODO: aca deberia levantar las ultimas preferencias
+  $log4Gambas.Info("Creacion de paneles iniciales")
+  For Each photo In photos
+    PanelPhoto = New Panel(panelDespliegue)
+    PanelPhoto.Width = $width
+    PanelPhoto.Height = $height
+    PanelPhoto.Arrangement = Arrange.Fill
+    PanelPhoto.Show()
+
+    formPhoto = New FPhoto(photo, PanelPhoto)
+
+  Next
+
+End
+
+Public Sub ButtonZoomIn_Click()
+
+  Dim pane As Variant
+
+  For Each pane In panelDespliegue.Children
+    pane.Width = pane.Width * 1.25
+    pane.Height = pane.Height * 1.25
+  Next
+
+End
+
+Public Sub ButtonZoomOut_Click()
+
+  Dim pane As Variant
+
+  For Each pane In panelDespliegue.Children
+    pane.Width = pane.Width / 1.25
+    pane.Height = pane.Height / 1.25
+  Next
+
+End
+
+Public Sub Libreria_Click()
+
+End
+
+Public Sub ToggleButtonPersonal_Click()
+
+  $log4Gambas.debug("Seleccion de libreria personal")
+  ToggleButtonCompartida.Value = False
+  $photoService.ToggleLibrary(Enumeration.LibraryType_Private)
+
+End
+
+Public Sub ToggleButtonCompartida_Click()
+
+  $log4Gambas.debug("Seleccion de libreria compartida ")
+  ToggleButtonPersonal.Value = False
+  $photoService.ToggleLibrary(Enumeration.LibraryType_Shared)
 
 End

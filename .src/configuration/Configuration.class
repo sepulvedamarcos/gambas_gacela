@@ -7,586 +7,229 @@
 Private Const GLOBAL_VERSION As String = "Global/Version"
 Private Const GLOBAL_LIBRARY_TYPE As String = "Global/LibraryType"
 Private Const GLOBAL_LIBRARY_DIRECTORY As String = "Global/LibraryDirectory"
+Private Const GLOBAL_LIBRARY_PHOTOS_PER_VIEW As String = "Global/PhotosPerView"
+Private Const GLOBAL_APPLICATION_THEME As String = "Global/Theme"
 
 ' Constantes que definen la seccion de Log4Gambas
 Private Const LOG4GAMBAS_LEVEL As String = "Log4Gambas/Level"
-Private Const LOG4GAMBAS_OUT As String = "Log4Gambas/Out"
+Private Const LOG4GAMBAS_OUTPUT As String = "Log4Gambas/Output"
 Private Const LOG4GAMBAS_MAXFILES As String = "Log4Gambas/MaxFiles"
 Private Const LOG4GAMBAS_SIZELOG As String = "Log4Gambas/SizeLog"
-
-Private Const PATH_APP_MULTI As String = "/usr/share/gacela"
-
-' Constantes para configuración específica de Gacela (en directorio de app)
-' Private Const GACELA_PRIVATE_LIBRARY_PATH As String = "PrivateLibraryPath"
-' Private Const GACELA_SHARED_LIBRARY_PATH As String = "SharedLibraryPath"
-' Private Const GACELA_THUMBNAIL_QUALITY As String = "ThumbnailQuality"
-' Private Const GACELA_THUMBNAIL_SIZE As String = "ThumbnailSize"
-' Private Const GACELA_COMPRESSION_QUALITY As String = "CompressionQuality"
-' Private Const GACELA_EXPORT_FORMAT As String = "ExportFormat"
-' Private Const GACELA_FIRST_RUN As String = "FirstRun"
-' Private Const GACELA_LAST_IMPORT_DIRECTORY As String = "LastImportDirectory"
-' Private Const GACELA_LOG_LEVEL As String = "LogLevel"
-' Private Const GACELA_LOG_OUTPUT As String = "LogOutput"
-' Private Const GACELA_LOG_FILE As String = "LogFile"
-
-' === Declaracion de enums publicos ===
-' Enumeración para tipos de biblioteca
-Public Enum LibraryType_Private = 1               '' Enum indica que colección es privada
-Public Enum LibraryType_Shared = 2                '' Enum indica que colección es compartida
-
-' Enumeración para formatos de exportación
-' Public Enum ExportFormat_Original = 0
-' Public Enum ExportFormat_JPEG_High = 1
-' Public Enum ExportFormat_JPEG_Medium = 2
-' Public Enum ExportFormat_PNG = 3
+Private Const LOG4GAMBAS_LOGFILE As String = "Log4Gambas/LogFile"
+Private Const LOG4GAMBAS_MAXFILESIZE As String = "Log4Gambas/MaxFilesSize"
 
 ' Variable privadas
-Private $settings As Settings                       '' Objeto que referencia al archivo de settings
-Private $isFirstRun As Boolean = False              '' Indicador de primera ejecucion
-Private $useLibrary As Integer = 1                  '' Indicador de tipo de libreria activa
-Private $appPath As String                          '' Ruta de los archivos de la aplicación
-Private $libraryName As String = "gacela.db"        '' Nombre del archivo de SQLite3
-Private $configName As String = "gacela.conf"       '' Nomrbe del arvhivo de settings
+Private $settings As Settings                                                 '' Objeto que referencia al archivo de settings
+Private $isFirstRun As Boolean = False                                        '' Indicador de primera ejecucion
+Private $whichLibrary As Integer = Enumeration.LibraryType_Private            '' Indicador de tipo de libreria activa
+Private $appPath As String                                                    '' Ruta de los archivos de la aplicación
+Private $log4gambas As New Log4Gambas3                                        '' Objeto para hacer logger
+Private $soTheme As Integer                                                   '' Indica el tema activo del SO
+Private $appTheme As Integer                                                  '' Indica el tema que usa la aplicacion
+Private $libraryName As String                                                '' Nombre de la libreria
 
-' Private $downloadDirectory As String
-' Private $privateLibraryPath As String
-' Private $thumbnailQuality As Integer = Constants.THUMBNAIL_QUALITY_DEFAULT
-' Private $thumbnailSize As Integer = Constants.THUMBNAIL_SIZE_DEFAULT
-' Private $compressionQuality As Integer = Constants.COMPRESSION_QUALITY_DEFAULT
-' Private $exportFormat As Integer = ExportFormat.Original
-' Private $lastImportDirectory As String
-' Private $gacelaDirectoryPath As String
+' Propiedades
+Property Read IsFirstRun As Boolean                                           '' Indicador de primera ejecución
+Property Read LibraryPath As String                                           '' Entrega path a la biblioteca actualmente activa
+Property Read whichLibrary As Integer                                         '' Entrega indicador de biblioteca seleccionada por el usuario
+Property Read IsSharedLibraryAvailable As Boolean                              '' Indicador de biblioteca compartida disponible para trabajar
 
-' Configuración de Log4Gambas
-Private $logLevel As Integer = 5                    '' Define que el log por defecto es Debug
-Private $logOutput As Integer = 2 ' CONSOLA por defecto
-
-Property Read IsFirstRun As Boolean                 '' Indicador de primera ejecución
-Property Read LibraryPathName As String             '' Indica la ruta donde se alojan los archivos de la aplicacion
-
-' Constructor
+'============================================
+'
+'      Métodos publicos
+'
+'============================================
 Public Sub _new()
 
-  $settings = New Settings(User.Home &/ ".config/gacela/gacela.conf")
+  ' Cargamos la ruta de la bilioteca privada como valor inicial y detectar primera vez
+  $appPath = User.Home &/ Constants.GACELA_DIRECTORY
+  'Revisamos cual es el tema definido por el sistema operativo
+  $soTheme = FindSOTheme()
+
+  $settings = New Settings($appPath &/ Constants.CONFIG_NAME)
   If $settings.Count = 0 Then
+    'Cargamos variable para indicar que es primera vez que se ingresa
     $isFirstRun = True
+    'Inicializamos el arvhivo settings
+    FirstInitializeSettings()
+    'Inicializamos la seccion Log4Gambas
+    FirstInitializeLogger()
+
+    $log4Gambas.Info("Se detecto que es el primer inicio. Se configurara la aplicacion privada y se detectara el sector compartido")
   Endif
 
 Catch
+  $log4gambas.Error("Error inicializando configuración: " & Error.Text)
   Error.Raise("Error inicializando configuración: " & Error.Text)
 
 End
 
-Public Sub InitializeEnvironment() ''Inicializa segun lo que esta previamente definido
+Public Sub InitializeEnvironment() ''Carga ambiente  definido en la configuracion
+
+  $log4gambas.info("Inicializando entorno")
 
   If $settings[GLOBAL_LIBRARY_TYPE, Null] = Null Then
     Error.Raise("Problemas al cargar configuraciones iniciales")
   Else
-    $useLibrary = $settings[GLOBAL_LIBRARY_TYPE]
-    $appPath = $settings[GLOBAL_LIBRARY_DIRECTORY]
+    $whichLibrary = $settings[GLOBAL_LIBRARY_TYPE]
+    $appTheme = $settings[GLOBAL_APPLICATION_THEME, Enumeration.APP_THEME_SO]
   Endif
 
 End
 
-Public Sub InitializePrivateSettings() '' Inicializa y valida la estructura de Settings privada
+Public Function InitializeLogger() As Log4Gambas3
 
-  ' Cargamos las variable del ambiente seleccionado
-  $useLibrary = LibraryType_Private
-  $appPath = User.Home &/ ".config/gacela/"
-
-  InitializeSettings()
-
-End
-
-Public Sub InitializeMultiUserSettings() '' Inicializa y valida la estructura de Settings multiusuaro
-
-  ' Cargamos las variable del ambiente seleccionado
-  $useLibrary = LibraryType_Shared
-  $appPath = PATH_APP_MULTI
-
-  InitializeSettings()
-
-End
-
-Public Function InitializeLogger() As Log4Gambas
-
-  Dim $logger As New Log4Gambas
-
+  $log4gambas.warning("creando archivo ini con datos del log4gambas3")
   ' configuramos el logger
-  $logger.AppName = Application.Name
-  $logger.LogLevel = Log4Gambas.LEVEL_DEBUG
-  $logger.LogOut = Log4Gambas.OUT_CONSOLE
-  $logger.PathFiles = $appPath
-  $logger.SizeLog = 5
-  Return $logger
+  $log4gambas.SetAppName(Application.Name)
+  $log4gambas.SetMinLevel($settings[LOG4GAMBAS_LEVEL, $log4gambas.LEVEL_DEBUG])
+  $log4gambas.SetOutput($settings[LOG4GAMBAS_OUTPUT, $log4gambas.OUTPUT_CONSOLE])
+  $log4gambas.SetLogFile($settings[LOG4GAMBAS_LOGFILE, $log4gambas.GetLogFile()])
+  $log4gambas.SetMaxFileSize($settings[LOG4GAMBAS_MAXFILESIZE, $log4gambas.GetMaxFileSize()])
+  $log4gambas.SetMaxFiles($settings[LOG4GAMBAS_MAXFILES, $log4gambas.GetMaxFiles()])
+
+  Return $log4gambas
 
 End
 
-' === Métodos privados ===
-Private Sub InitializeSettings()
+Public Sub SetWichLibrary(value As Integer)
 
-  Dim configPathName As String = $appPath &/ $configName
-  Dim libraryPathName As String
+  $whichLibrary = Value
+  $settings[GLOBAL_LIBRARY_TYPE] = value
+  $settings.Save
+
+End
+
+'================================================
+'
+'         Métodos privados
+'
+'================================================
+Private Sub FirstInitializeSettings() ''Creacion de configuraciones iniciales
+
+  $log4gambas.info("creando archivo ini con datos iniciales")
 
   ' Verificamos que exista el archivo de Settings
-  If Not Exist(configPathName) Then
+  If Not Exist($appPath &/ Constants.CONFIG_NAME) Then
     If Not Exist($appPath) Then
       Mkdir $appPath
     Endif
-
-    ' Sección Global
-    $settings[GLOBAL_VERSION] = Application.Version
-    $settings[GLOBAL_LIBRARY_TYPE] = LibraryType_Private
-    $settings[GLOBAL_LIBRARY_DIRECTORY] = $appPath
-    ' Sección Log4Gambas
-    $settings[LOG4GAMBAS_LEVEL] = Log4Gambas.NIVEL_DEBUG
-    $settings[LOG4GAMBAS_OUT] = Log4Gambas.SALIDA_CONSOLA
-    $settings[LOG4GAMBAS_MAXFILES] = 0
-    $settings[LOG4GAMBAS_SIZELOG] = 0
-
-    $settings.Save()
-
   Endif
 
-  ' ' Verificamos que exista el directorio de la aplicación dentro de .config/gacela
-  ' If Not Exist($libraryPath) Then
-  '   Try Mkdir $libraryPath
-  '   If Error Then
-  '     Error.Raise("Problemas al crear el directorio de la aplicación [" & $libraryPath & "]: " & Error.Text)
-  '   Endif
-  ' Endif
+  ' Sección Global
+  $settings[GLOBAL_VERSION] = Application.Version
+  $settings[GLOBAL_LIBRARY_TYPE] = Enumeration.LibraryType_Private
+  $settings[GLOBAL_LIBRARY_TYPE] = Me.whichLibrary
+  $settings[GLOBAL_APPLICATION_THEME] = $soTheme
+  $settings.Save()
+
+Catch
+  $log4gambas.Error("Error detectado al intentar crear directorio de archivo settings" & Error.Text)
+  Error.Raise("Error detectado al intentar crear directorio de archivo settings" & Error.Text)
 
 End
 
-' Carga la configuración desde Settings
-' Public Sub LoadConfiguration()
-'
-'   Try
-'   ' === CONFIGURACIÓN GLOBAL (Settings principales) ===
-'
-'   ' Cargar tipo de biblioteca
-'   Dim libraryType As Integer = Settings[GLOBAL_LIBRARY_TYPE, LibraryType.Private]
-'   $isPrivateLibrary = (libraryType = LibraryType.Private)
-'
-'   ' Cargar directorio de descarga
-'   $downloadDirectory = Settings[GLOBAL_DOWNLOAD_DIRECTORY, User.Home &/ "Descargas/Gacela"]
-'
-'   ' === CONFIGURACIÓN ESPECÍFICA DE GACELA ===
-'
-'   ' Cargar desde archivo de configuración específico
-'   Dim configFile As String = $gacelaDirectoryPath &/ Constants.CONFIG_FILE
-'
-'   If Exist(configFile) Then
-'     LoadSpecificConfiguration(configFile)
-'   Else
-'     UseDefaultSpecificConfiguration()
-'   Endif
-'
-'   ' Validar configuración cargada
-'   ValidateConfiguration()
-'
-' Catch
-'   ' Si hay error cargando, usar valores por defecto
-'   UseDefaultConfiguration()
-'   Error.Propagate
-'
-'   End Try
-'
-' End
+Private Function FirstInitializeLogger() As Log4Gambas3
 
-' Carga configuración específica desde archivo
-' Private Sub LoadSpecificConfiguration(configFile As String)
-'
-'   Dim content As String
-'   Dim lines As String[]
-'   Dim i As Integer
-'   Dim line As String
-'   Dim parts As String[]
-'
-'   Try
-'   content = File.Load(configFile)
-'   lines = Split(content, "\n")
-'
-'   For i = 0 To lines.Max
-'     Line = Trim(lines[i])
-'
-'     ' Ignorar comentarios y líneas vacías
-'     If Line Begins "#" Or Line = "" Then Continue
-'
-'     parts = Split(line, "=", "", True)
-'     If parts.Count = 2 Then
-'       ProcessConfiguration(Trim(parts[0]), Trim(parts[1]))
-'     Endif
-'   Next
-'
-' Catch
-'   ' Si no se puede cargar, usar valores por defecto
-'   UseDefaultSpecificConfiguration()
-'   End Try
-'
-' End
+  $log4gambas.info("creando logger con datos iniciales")
 
-' Procesa una línea de configuración específica
-' Private Sub ProcessConfiguration(key As String, value As String)
-'
-'   Select Case key
-'     Case GACELA_PRIVATE_LIBRARY_PATH
-'       $privateLibraryPath = value
-'     Case GACELA_SHARED_LIBRARY_PATH
-'       $sharedLibraryPath = value
-'     Case GACELA_THUMBNAIL_QUALITY
-'       $thumbnailQuality = Val(value)
-'     Case GACELA_THUMBNAIL_SIZE
-'       $thumbnailSize = Val(value)
-'     Case GACELA_COMPRESSION_QUALITY
-'       $compressionQuality = Val(value)
-'     Case GACELA_EXPORT_FORMAT
-'       $exportFormat = Val(value)
-'     Case GACELA_FIRST_RUN
-'       $isFirstRun = (LCase(value) = "true")
-'     Case GACELA_LAST_IMPORT_DIRECTORY
-'       $lastImportDirectory = value
-'     Case GACELA_LOG_LEVEL
-'       $logLevel = Val(value)
-'     Case GACELA_LOG_OUTPUT
-'       $logOutput = Val(value)
-'     Case GACELA_LOG_FILE
-'       $logFile = value
-'   End Select
-'
-' End
+  $settings[LOG4GAMBAS_LEVEL] = $log4gambas.GetMinLevel()
+  $settings[LOG4GAMBAS_OUTPUT] = $log4gambas.GetOutput()
+  $settings[LOG4GAMBAS_LOGFILE] = $appPath
+  $settings[LOG4GAMBAS_MAXFILESIZE] = $log4gambas.GetMaxFileSize()
+  $settings[LOG4GAMBAS_MAXFILES] = $log4gambas.GetMaxFiles()
+  $settings.Save()
 
-' Usa configuración específica por defecto
-' Private Sub UseDefaultSpecificConfiguration()
-'
-'   $privateLibraryPath = User.Home &/ Constants.GACELA_DIRECTORY
-'   $sharedLibraryPath = Constants.SHARED_LIBRARY_DEFAULT
-'   $thumbnailQuality = Constants.THUMBNAIL_QUALITY_DEFAULT
-'   $thumbnailSize = Constants.THUMBNAIL_SIZE_DEFAULT
-'   $compressionQuality = Constants.COMPRESSION_QUALITY_DEFAULT
-'   $exportFormat = ExportFormat.Original
-'   $isFirstRun = True
-'   $lastImportDirectory = User.Home &/ "Imágenes"
-'   $logLevel = 2 ' DEBUG
-'   $logOutput = 1 ' CONSOLA
-'   $logFile = $gacelaDirectoryPath &/ Constants.LOG_FILE
-'
-' End
+End
 
-' Guarda la configuración actual
-' Public Sub SaveConfiguration()
-'
-'   Try
-'   ' === GUARDAR CONFIGURACIÓN GLOBAL ===
-'   Dim libraryType As Integer = If($isPrivateLibrary, LibraryType.Private, LibraryType.Shared)
-'   Settings[GLOBAL_LIBRARY_TYPE] = libraryType
-'   Settings[GLOBAL_DOWNLOAD_DIRECTORY] = $downloadDirectory
-'   Settings.Save()
-'
-'   ' === GUARDAR CONFIGURACIÓN ESPECÍFICA ===
-'   SaveSpecificConfiguration()
-'
-' Catch
-'   Error.Raise("Error guardando configuración: " & Error.Text)
-'   End Try
-'
-' End
+Private Function FindSOTheme() As Integer
 
-' ' Guarda configuración específica en archivo
-' Private Sub SaveSpecificConfiguration()
-'
-'   Dim configFile As String = $gacelaDirectoryPath &/ Constants.CONFIG_FILE
-'   Dim content As String
-'
-'   ' Construir contenido del archivo
-'   content = "# Configuración de Gacela - Generado automáticamente\n"
-'   content &= "# " & Format(Now(), "yyyy-mm-dd hh:nn:ss") & "\n\n"
-'
-'   content &= "# Rutas de bibliotecas\n"
-'   content &= GACELA_PRIVATE_LIBRARY_PATH & "=" & $privateLibraryPath & "\n"
-'   content &= GACELA_SHARED_LIBRARY_PATH & "=" & $sharedLibraryPath & "\n\n"
-'
-'   content &= "# Configuración de imágenes\n"
-'   content &= GACELA_THUMBNAIL_QUALITY & "=" & $thumbnailQuality & "\n"
-'   content &= GACELA_THUMBNAIL_SIZE & "=" & $thumbnailSize & "\n"
-'   content &= GACELA_COMPRESSION_QUALITY & "=" & $compressionQuality & "\n\n"
-'
-'   content &= "# Configuración de exportación\n"
-'   content &= GACELA_EXPORT_FORMAT & "=" & $exportFormat & "\n"
-'   content &= GACELA_LAST_IMPORT_DIRECTORY & "=" & $lastImportDirectory & "\n\n"
-'
-'   content &= "# Estado de aplicación\n"
-'   content &= GACELA_FIRST_RUN & "=" & If($isFirstRun, "true", "false") & "\n\n"
-'
-'   content &= "# Configuración de Log4Gambas\n"
-'   content &= GACELA_LOG_LEVEL & "=" & $logLevel & "\n"
-'   content &= GACELA_LOG_OUTPUT & "=" & $logOutput & "\n"
-'   content &= GACELA_LOG_FILE & "=" & $logFile & "\n"
-'
-'   Try
-'   File.Save(configFile, content)
-'
-'   ' Marcar que ya no es primera ejecución
-'   $isFirstRun = False
-'
-' Catch
-'   Error.Raise("Error guardando configuración específica: " & Error.Text)
-'   End Try
-'
-' End
+  Dim bgColor As Integer = Color.Background
+  Dim brightness As Float
+  Dim r, g, b As Integer
 
-' ' Valida la configuración cargada
-' Private Sub ValidateConfiguration()
-'
-'   ' Validar rangos de calidad
-'   If $thumbnailQuality < 10 Or $thumbnailQuality > 100 Then
-'     $thumbnailQuality = Constants.THUMBNAIL_QUALITY_DEFAULT
-'   Endif
-'
-'   If $compressionQuality < 10 Or $compressionQuality > 100 Then
-'     $compressionQuality = Constants.COMPRESSION_QUALITY_DEFAULT
-'   Endif
-'
-'   If $thumbnailSize < 50 Or $thumbnailSize > 500 Then
-'     $thumbnailSize = Constants.THUMBNAIL_SIZE_DEFAULT
-'   Endif
-'
-'   ' Validar que directorios padre existan (solo advertir, no corregir)
-'   If Not Exist(File.Dir($downloadDirectory)) Then
-'     ' El directorio padre de descarga no existe
-'     $downloadDirectory = User.Home &/ "Descargas/Gacela"
-'   Endif
-'
-' End
+  ' Extraer componentes RGB
+  r = Color[bgColor].Red
+  g = Color[bgColor].Green
+  b = Color[bgColor].Blue
 
-' Usa configuración por defecto en caso de error
-' Private Sub UseDefaultConfiguration()
-'
-'   $isPrivateLibrary = True
-'   $downloadDirectory = User.Home &/ "Descargas/Gacela"
-'   UseDefaultSpecificConfiguration()
-'
-' End
+  ' Calcular brillo (luminosidad)
+  brightness = (r * 0.299 + g * 0.587 + b * 0.114)
 
-' === Métodos para las propiedades públicas ===
+  ' Si el brillo es menor a 128, es tema oscuro
+  If brightness < 128 Then
+    Return Enumeration.APP_THEME_DARK
+  Else
+    Return Enumeration.APP_THEME_LIGHT
+  Endif
+
+  Return 0
+
+End
+
+' =======================================================
+'
+'       Métodos para las propiedades públicas
+'
+' =======================================================
 Function IsFirstRun_Read() As Boolean
 
   Return $isFirstRun
 
 End
 
-Private Function LibraryPathName_Read() As String
+Private Function whichLibrary_Read() As Integer
 
-  Return $appPath
+  Return $whichLibrary
 
 End
 
-'
-' ' Tipo de biblioteca
-' Public Property IsPrivateLibrary
-'
-' Public Function IsPrivateLibrary_Read() As Boolean
-'
-'   Return $isPrivateLibrary
-'
-' End
-'
-' Public Sub IsPrivateLibrary_Write(value As Boolean)
-'
-'   $isPrivateLibrary = value
-'
-' End
-'
-' ' Directorio de descarga
-' Public Property DownloadDirectory
-'
-' Public Function DownloadDirectory_Read() As String
-'
-'   Return $downloadDirectory
-'
-' End
-'
-' Public Sub DownloadDirectory_Write(value As String)
-'
-'   $downloadDirectory = value
-'
-' End
-'
-' ' Ruta de biblioteca activa (solo lectura)
-' Public Property Read ActiveLibraryPath As String
-'
-' Public Function ActiveLibraryPath_Read() As String
-'
-'   If $isPrivateLibrary Then
-'     Return $privateLibraryPath
-'   Else
-'     Return $sharedLibraryPath
-'   Endif
-'
-' End
-'
-' ' Ruta de biblioteca privada
-' Public Property PrivateLibraryPath
-'
-' Public Function PrivateLibraryPath_Read() As String
-'
-'   Return $privateLibraryPath
-'
-' End
-'
-' Public Sub PrivateLibraryPath_Write(value As String)
-'
-'   $privateLibraryPath = value
-'
-' End
-'
-' ' Ruta de biblioteca compartida
-' Public Property SharedLibraryPath
-'
-' Public Function SharedLibraryPath_Read() As String
-'
-'   Return $sharedLibraryPath
-'
-' End
-'
-' Public Sub SharedLibraryPath_Write(value As String)
-'
-'   $sharedLibraryPath = value
-'
-' End
-'
-' ' Calidad de thumbnails
-' Public Property ThumbnailQuality
-'
-' Public Function ThumbnailQuality_Read() As Integer
-'
-'   Return $thumbnailQuality
-'
-' End
-'
-' Public Sub ThumbnailQuality_Write(value As Integer)
-'
-'   If value >= 10 And value <= 100 Then
-'     $thumbnailQuality = value
-'   Endif
-'
-' End
-'
-' ' Tamaño de thumbnails
-' Public Property ThumbnailSize
-'
-' Public Function ThumbnailSize_Read() As Integer
-'
-'   Return $thumbnailSize
-'
-' End
-'
-' Public Sub ThumbnailSize_Write(value As Integer)
-'
-'   If value >= 50 And value <= 500 Then
-'     $thumbnailSize = value
-'   Endif
-'
-' End
+Private Function LibraryPath_Read() As String
 
-' ' Calidad de compresión
-' Public Property CompressionQuality
-'
-' Public Function CompressionQuality_Read() As Integer
-'
-'   Return $compressionQuality
-'
-' End
-'
-' Public Sub CompressionQuality_Write(value As Integer)
-'
-'   If value >= 10 And value <= 100 Then
-'     $compressionQuality = value
-'   Endif
-'
-' End
-'
-' ' Formato de exportación
-' Public Property ExportFormat
-'
-' Public Function ExportFormat_Read() As Integer
-'
-'   Return $exportFormat
-'
-' End
-'
-' Public Sub ExportFormat_Write(value As Integer)
-'
-'   $exportFormat = value
-'
-' End
+  If $whichLibrary = Enumeration.LibraryType_Private Then
+    Return $appPath
+  Else
+    Return Constants.GACELA_DIRECTORY_SHARED
+  Endif
 
-'
-' ' Último directorio de importación
-' Public Property LastImportDirectory
-'
-' Public Function LastImportDirectory_Read() As String
-'
-'   Return $lastImportDirectory
-'
-' End
-'
-' Public Sub LastImportDirectory_Write(value As String)
-'
-'   $lastImportDirectory = value
-'
-' End
+End
 
-' ' Nivel de log
-' Public Property LogLevel
-'
-' Public Function LogLevel_Read() As Integer
-'
-'   Return $logLevel
-'
-' End
-'
-' Public Sub LogLevel_Write(value As Integer)
-'
-'   $logLevel = value
-'
-' End
-'
-' ' Salida de log
-' Public Property LogOutput
+Function IsSharedLibraryAvailable_Read() As Boolean
 
-' Public Function LogOutput_Read() As Integer
-'
-'   Return $logOutput
-'
-' End
-'
-' Public Sub LogOutput_Write(value As Integer)
-'
-'   $logOutput = value
-'
-' End
-'
-' ' Archivo de log
-' Public Property LogFile
-'
-' Public Function LogFile_Read() As String
-'
-'   Return $logFile
-'
-' End
-'
-' Public Sub LogFile_Write(value As String)
-'
-'   $logFile = value
-'
-' End
-'
-' ' Ruta del directorio de Gacela (solo lectura)
-' Public Property Read GacelaDirectoryPath As String
-'
-' Public Function GacelaDirectoryPath_Read() As String
-'
-'   Return $gacelaDirectoryPath
-'
-' End
+  Dim hasGroup As Boolean
+  Dim hasDirectory As Boolean
+  Dim hasPermissions As Boolean
+  Dim groupAvailable As String
+
+  ' Verificar que existe el grupo
+  Shell "getent group " & Constants.GRUPO_GACELA To groupAvailable
+  If groupAvailable = "" Then
+    Return False
+  Endif
+
+  ' Verificar que el usuario esta en el grupo
+  If InStr(groupAvailable, User.Name) <= 0 Then
+    Return False
+  Endif
+
+  ' Verificar que existe el directorio
+  If Not Exist(Constants.GACELA_DIRECTORY_SHARED) Then
+    Return False
+  Endif
+
+  ' Verificar permisos de escritura
+  If Exist(Constants.GACELA_DIRECTORY_SHARED) Then
+    Try File.Save(Constants.GACELA_DIRECTORY_SHARED &/ ".test", "test")
+    If Error Then Return False
+    Try Kill Constants.GACELA_DIRECTORY_SHARED &/ ".test"
+  Endif
+
+  'sudo Chown -R root:gacela - users/usr/share/gacela && \
+  'sudo Chmod 755 /usr/share/gacela && \
+  'sudo Chmod -R 775 /usr/share/gacela/biblioteca && \
+  'sudo find /usr/share/gacela/biblioteca -type d -exec Chmod g+s {} \; && \
+  'echo "Permisos configurados correctamente"
+
+  Return True
+
+End

@@ -1,0 +1,155 @@
+' Gambas class file
+
+'
+'
+' Clase de manejo de negocio
+'
+'
+Private $log4gambas As Log4Gambas3
+Private $photoRepository As PhotoRepository
+Private $compressionService As CompressionService
+Private $configuration As Configuration
+
+Private Const THUMBNAIL_MIN_BENEFIT As Float = 1.5      ' Generar si reduce al menos 50%
+
+' ==================================================
+'
+'          Metodos publicos
+'
+' ==================================================
+Public Sub _new(log4gambas As Log4Gambas3, photorepository As PhotoRepository, compressionService As CompressionService, configuration As Configuration)
+
+  $log4gambas = log4gambas
+  $photoRepository = photoRepository
+  $compressionService = compressionService
+  $configuration = configuration
+
+End
+
+Public Function GetAllPhotos() As PhotoEntity[]
+
+  Dim photosEntity As PhotoEntity[]
+
+  Try photosEntity = $photoRepository.getPhotos()
+  If Error Then
+    $log4gambas.Error("Error al leer las fotos " & Error.Text)
+    error.Propagate
+  Endif
+
+  Return photosEntity
+
+End
+
+Public Function ToggleFavorite(photoId As Integer, stars As Integer) As Boolean
+
+  Dim photo As PhotoEntity
+
+  Return True
+
+End
+
+Public Sub DeletePhoto(photoId As Integer) As Boolean
+
+  Return True
+
+Catch
+  $log4gambas.error("Ocurrio un problema al elimianar la foto")
+  Error.Propagate
+
+End
+
+Public Sub InsertSeedData() '' Metodo que permite inicializar la base de datos con 2 fotos
+
+  $log4gambas.Info("Insertando datos de prueba en tabla photos...")
+
+  If SavePhoto(Constants.PHOTO_SEED_1, "Foto 1") Then Error.Raise("Error al insertar foto 1")
+  Wait 1 ' esperamos un poco para generacion de codigo
+  If SavePhoto(Constants.PHOTO_SEED_2, "Foto 2") Then Error.Propagate
+
+  $log4gambas.Info("Datos de prueba insertados exitosamente")
+
+Catch
+  $log4gambas.Error("Error insertando foto de prueba " & Error.Text)
+
+End
+
+Public Sub ToggleLibrary(lib As Integer) '' Metodo que sirve para cambiar la libreria activa
+
+  'Asignacion del valor
+  $configuration.SetWichLibrary(lib)
+  ' Notificar al contexto DB Accediendo a DBContext a través del Repository
+  $photoRepository.DBContext.SwitchLibrary()
+
+Catch
+  Error.Propagate
+
+End
+
+Public Sub ImportPhoto(imagenPath As String, description As String)
+
+  If SavePhoto(imagenPath, description) Then Error.Raise("Error al insertar foto" & imagenPath)
+
+Catch
+  $log4gambas.Error("Error insertando foto " & Error.Text)
+
+End
+
+' ==================================================
+'
+'          Metodos privados
+'
+' ==================================================
+
+Private Function SavePhoto(imagenPath As String, description As String) As Boolean
+
+  Dim photoEntity As New PhotoEntity
+  Dim originalPhoto As Image
+  Dim imageString As String
+  Dim compressedZip As String
+  Dim thumbnailImage As Image
+  Dim tempThumbFile As String
+  Dim thumbnailString As String = ""
+  Dim extension As String
+  Dim filename As String
+  Dim reduction As Integer
+
+  ' Cargar imagen original
+  originalPhoto = Image.Load(imagenPath)
+  imageString = File.Load(imagenPath)
+
+  $log4gambas.Debug("Tamaño de la imagen " & originalPhoto.Width & " x " & originalPhoto.Height)
+
+  If originalPhoto.Width <= 255 Or originalPhoto.Height <= 255 Then
+    $log4gambas.Debug("imagen es menor que rango aceptable va sin miniatura")
+  Else
+    $log4gambas.Debug("Thumbnail beneficioso: " & originalPhoto.Width & "px → " & "(reducción " & Format(reduction, "0.00") & "x)")
+
+    thumbnailImage = originalPhoto.Stretch(320, -1)
+    tempThumbFile = Temp() & "." & extension
+    thumbnailString = thumbnailImage.ToString(extension, 100)
+    File.Save(tempThumbFile, thumbnailString)
+    thumbnailString = File.Load(tempThumbFile)
+  Endif
+
+  photoEntity.FileName = File.BaseName(imagenPath) & "." & File.Ext(imagenPath)
+  photoEntity.WidthPixels = originalPhoto.Width
+  photoEntity.HeightPixels = originalPhoto.Height
+  photoEntity.ImportDate = Now()
+  photoEntity.Description = description
+  photoEntity.Stars = 0
+  photoEntity.ImportUser = User.Name
+  photoEntity.ImagePath = $compressionService.SaveImageIO(imagenPath)
+  photoEntity.Hash256 = $compressionService.hash256Calculate(imagenPath)
+  photoEntity.Thumbnail = thumbnailString
+
+  photoEntity = $photoRepository.createPhoto(photoEntity)
+
+  Try Kill tempThumbFile
+
+  Return photoEntity
+
+Catch
+  $log4gambas.Error("Error importando foto: " & Error.Text)
+  Error.Propagate
+
+End
