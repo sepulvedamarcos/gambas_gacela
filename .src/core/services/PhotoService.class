@@ -9,6 +9,7 @@ Private $log4gambas As Log4Gambas3
 Private $photoRepository As PhotoRepository
 Private $compressionService As CompressionService
 Private $configuration As Configuration
+Private $iterator As PhotoIterator
 
 Private Const THUMBNAIL_MIN_BENEFIT As Float = 1.5      ' Generar si reduce al menos 50%
 
@@ -23,6 +24,7 @@ Public Sub _new(log4gambas As Log4Gambas3, photorepository As PhotoRepository, c
   $photoRepository = photoRepository
   $compressionService = compressionService
   $configuration = configuration
+  $iterator = New PhotoIterator($photoRepository, $log4gambas)
 
 End
 
@@ -37,6 +39,10 @@ Public Function GetAllPhotos() As PhotoEntity[]
   Endif
 
   Return photosEntity
+
+End
+
+Public Function loadFirstPage() As PhotoEntity[]
 
 End
 
@@ -91,6 +97,12 @@ Public Sub ImportPhoto(imagenPath As String, description As String)
 
 Catch
   $log4gambas.Error("Error insertando foto " & Error.Text)
+
+End
+
+Public Function GetPhotoIterator() As PhotoIterator
+
+  Return New PhotoIterator($photoRepository, $log4gambas)
 
 End
 

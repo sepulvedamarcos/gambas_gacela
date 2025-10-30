@@ -53,6 +53,66 @@ Catch
 
 End
 
+Public Function FindWithFilters(whereClause As String, params As Variant[], sortBy As String, sortOrder As String, limit As Integer, offset As Integer) As PhotoEntity[]
+
+  Dim result As Result
+  Dim query As String
+  Dim orderBy As String = "import_date"
+  Dim orderType As String = "desc"
+
+  $log4gambas.Debug("Repository: Ejecutando query con filtros")
+
+  If sortBy <> "" Then
+    orderBy = orderBy
+  Endif
+  If sortOrder <> "" Then
+    orderType = sortOrder
+  Endif
+  orderBy &= " " & orderType
+
+  ' Ejecutar query con LIMIT y OFFSET
+  ' En Gambas, Find no soporta directamente LIMIT/OFFSET
+  ' Debemos usar Exec con SQL
+  query = "SELECT * FROM " & Constants.TABLE_PHOTOS &
+    " WHERE " & whereClause &
+    " ORDER BY " & orderBy &
+    " LIMIT " & limit &
+    " OFFSET " & offset
+
+  ' Convertir params a array para Exec
+  result = $dbContext.Exec(query, params)
+
+  If result.Available Then
+    Return MapResultToEntities(result)
+  Endif
+
+Catch
+  $log4gambas.Error("Error en FindWithFilters: " & Error.Text)
+
+  Return New PhotoEntity[]
+
+End
+
+Public Function CountWithFilters(whereClause As String, params As Variant[]) As Integer
+
+  Dim result As Result
+  Dim query As String
+
+  query = "SELECT COUNT(*) as total FROM " & Constants.TABLE_PHOTOS &
+    " WHERE " & whereClause
+  result = $dbContext.Exec(query, params)
+
+  If result.Available Then
+    Return result["total"]
+  Endif
+
+Catch
+  $log4gambas.Error("Error en CountWithFilters: " & Error.Text)
+
+  Return 0
+
+End
+
 Public Function createPhoto(photo As PhotoEntity) As PhotoEntity
 
   Dim result As Result

@@ -128,7 +128,7 @@
           }
         }
       }
-      { !PanelDespliegue ScrollView
+      { !PanelGalleryContent ScrollView
         MoveScaled(1,17,90,27)
         #Public = True
         Expand = True

@@ -1,29 +1,29 @@
 ' Gambas class file
 
 Private $photo As PhotoEntity
+Private $pictureBox As PictureBox
 
 Public Sub _new(photo As PhotoEntity)
 
-  Dim cc As Image
-
   $photo = photo
-
-  If photo.HasThumbnail Then
-    PictureBoxPhoto.Image = Image.FromString($photo.Thumbnail)
-  Else
-    PictureBoxPhoto.Image = Image.Load($photo.ImagePath &/ $photo.FileName)
-  Endif
-
-  Me.Height = Me.Parent.Height
-  Me.Width = Me.Parent.Width
-
-  PictureBoxPhoto.Top = 0
-  PictureBoxPhoto.Left = 0
-  PictureBoxPhoto.Height = Me.Parent.Height
-  PictureBoxPhoto.Width = Me.Parent.Width
 
   ButtonSeleccionar.Top = 4
   ButtonSeleccionar.Left = 4
+
+  $pictureBox = New PictureBox(Me)
+  $pictureBox.X = 0
+  $pictureBox.Y = 0
+  $pictureBox.Width = Me.Width
+  $pictureBox.Height = Me.Height
+  $pictureBox.Padding = 8
+  $pictureBox.Mode = PictureBox.Contain
+  $pictureBox.Expand = True
+  $pictureBox.Alignment = Align.Center
+  If photo.HasThumbnail Then
+    $pictureBox.Image = Image.FromString($photo.Thumbnail)
+  Else
+    $pictureBox.Image = Image.Load($photo.ImagePath &/ $photo.FileName)
+  Endif
 
 End
 
@@ -35,8 +35,8 @@ Public Sub Form_Resize()
 
   Me.Height = Me.Parent.Height
   Me.Width = Me.Parent.Width
-  PictureBoxPhoto.Height = Me.Parent.Height
-  PictureBoxPhoto.Width = Me.Parent.Width
+  $pictureBox.Height = Me.Height
+  $pictureBox.Width = Me.Width
 
 End
 
@@ -79,6 +79,7 @@ Public Sub Form_Enter()
 
   Print "entre form"
   ButtonSeleccionar.Visible = True
+  ButtonSeleccionar.Raise()
 
 End
 
@@ -91,7 +92,7 @@ End
 
 Public Sub ButtonSeleccionar_Click()
 
-  PictureBoxPhoto.Background = Color.Blue
+  ' PictureBoxPhoto.Background = Color.Blue
   Form.Refresh
 
 End

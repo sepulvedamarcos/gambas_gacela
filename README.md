@@ -131,3 +131,5 @@ GPL v3 - Software libre para siempre.
 **¿Te gusta Gacela?** ⭐ Dale una estrella al repo y cuéntanos tu experiencia en [Issues](https://github.com/sepulvedamarcos/gambas_acela/issues)
 
 **¿Necesitas algo similar para libros?** 📚 Mantente atento a nuestro próximo proyecto...
+
+**¿Quieres apoyar el desarrollo?** ☕ [Invítame un café](https://ko-fi.com/sepulvedamarcos)
