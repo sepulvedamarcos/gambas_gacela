@@ -107,11 +107,20 @@ Private Function MapResultToEntities(result As Result) As PhotoEntity[] '' Mapeo
     photo.CreationDate = result["creation_date"]
     photo.ImportDate = result["import_date"]
     photo.Description = result["description"]
+    photo.Stars = result["stars"]
     photo.ImportUser = result["import_user"]
-    photo.OriginalPhoto = result["original_photo"]
+    photo.ImagePath = Result["image_path"]
+    photo.Hash256 = result["hash256"]
     photo.Thumbnail = result["thumbnail"]
     photo.LastSyncDate = result["last_sync_date"]
+    photo.SyncStatus = result["sync_status"]
     photo.SoftDelete = result["soft_delete"]
+    photo.SoftDeleteDate = result["soft_deleted_date"]
+    photo.SoftDeleteBy = result["soft_deleted_by"]
+    photo.SoftDeleteAuto = result["soft_deleted_auto"]
+    photo.IsLocked = result["is_locked"]
+    photo.LockedBy = result["locked_by"]
+    photo.Lockreason = result["lock_reason"]
 
     photos.Add(photo)
 

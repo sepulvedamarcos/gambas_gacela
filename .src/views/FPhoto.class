@@ -11,11 +11,19 @@ Public Sub _new(photo As PhotoEntity)
   If photo.HasThumbnail Then
     PictureBoxPhoto.Image = Image.FromString($photo.Thumbnail)
   Else
-    PictureBoxPhoto.Image = Image.FromString($photo.OriginalPhoto)
+    PictureBoxPhoto.Image = Image.Load($photo.ImagePath &/ $photo.FileName)
   Endif
 
   Me.Height = Me.Parent.Height
   Me.Width = Me.Parent.Width
+
+  PictureBoxPhoto.Top = 0
+  PictureBoxPhoto.Left = 0
+  PictureBoxPhoto.Height = Me.Parent.Height
+  PictureBoxPhoto.Width = Me.Parent.Width
+
+  ButtonSeleccionar.Top = 4
+  ButtonSeleccionar.Left = 4
 
 End
 
@@ -27,26 +35,63 @@ Public Sub Form_Resize()
 
   Me.Height = Me.Parent.Height
   Me.Width = Me.Parent.Width
+  PictureBoxPhoto.Height = Me.Parent.Height
+  PictureBoxPhoto.Width = Me.Parent.Width
 
 End
 
 Public Sub Form_Arrange()
 
-  Me.Height = Me.Parent.Height
-  Me.Width = Me.Parent.Width
+  ' Me.Height = Me.Parent.Height
+  ' Me.Width = Me.Parent.Width
+  ' PictureBoxPhoto.Height = Me.Parent.Height
+  ' PictureBoxPhoto.Width = Me.Parent.Width
 
 End
 
 Public Sub Form_Activate()
 
-  Me.Height = Me.Parent.Height
-  Me.Width = Me.Parent.Width
+  ' Me.Height = Me.Parent.Height
+  ' Me.Width = Me.Parent.Width
+  ' PictureBoxPhoto.Height = Me.Parent.Height
+  ' PictureBoxPhoto.Width = Me.Parent.Width
 
 End
 
 Public Sub Form_State()
 
-  Me.Height = Me.Parent.Height
-  Me.Width = Me.Parent.Width
+  ' Me.Height = Me.Parent.Height
+  ' Me.Width = Me.Parent.Width
+  ' PictureBoxPhoto.Height = Me.Parent.Height
+  ' PictureBoxPhoto.Width = Me.Parent.Width
+
+End
+
+Public Sub PictureBoxPhoto_Enter()
+
+End
+
+Public Sub PictureBoxPhoto_Leave()
+
+End
+
+Public Sub Form_Enter()
+
+  Print "entre form"
+  ButtonSeleccionar.Visible = True
+
+End
+
+Public Sub Form_Leave()
+
+  Print "sali form"
+  ButtonSeleccionar.Visible = False
+
+End
+
+Public Sub ButtonSeleccionar_Click()
+
+  PictureBoxPhoto.Background = Color.Blue
+  Form.Refresh
 
 End

@@ -60,20 +60,16 @@ End
 
 Public Sub InsertSeedData() '' Metodo que permite inicializar la base de datos con 2 fotos
 
-  Dim photoEntity As PhotoEntity
-
   $log4gambas.Info("Insertando datos de prueba en tabla photos...")
 
-  photoEntity = ImportPhoto(Constants.PHOTO_SEED_1, "Foto 1")
+  If SavePhoto(Constants.PHOTO_SEED_1, "Foto 1") Then Error.Raise("Error al insertar foto 1")
   Wait 1 ' esperamos un poco para generacion de codigo
-  photoEntity = ImportPhoto(Constants.PHOTO_SEED_2, "Foto 2")
+  If SavePhoto(Constants.PHOTO_SEED_2, "Foto 2") Then Error.Propagate
 
   $log4gambas.Info("Datos de prueba insertados exitosamente")
 
 Catch
-  If Error Then
-    $log4gambas.Error("Error insertando foto de prueba " & Error.Text)
-  Endif
+  $log4gambas.Error("Error insertando foto de prueba " & Error.Text)
 
 End
 
@@ -89,13 +85,22 @@ Catch
 
 End
 
+Public Sub ImportPhoto(imagenPath As String, description As String)
+
+  If SavePhoto(imagenPath, description) Then Error.Raise("Error al insertar foto" & imagenPath)
+
+Catch
+  $log4gambas.Error("Error insertando foto " & Error.Text)
+
+End
+
 ' ==================================================
 '
 '          Metodos privados
 '
 ' ==================================================
 
-Private Function ImportPhoto(imagenPath As String, description As String) As PhotoEntity
+Private Function SavePhoto(imagenPath As String, description As String) As Boolean
 
   Dim photoEntity As New PhotoEntity
   Dim originalPhoto As Image

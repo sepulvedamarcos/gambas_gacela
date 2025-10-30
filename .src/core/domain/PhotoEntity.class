@@ -41,19 +41,19 @@ Property ImportDate As Date               '' Fecha de importación a Gacela
 Property Description As String            '' Descripción de la foto
 Property Stars As Integer                 '' Indicador de estrellas de la foto
 Property ImportUser As String             '' Usuario que importó la foto
-Property ImagePath As String
-Property Hash256 As String
+Property ImagePath As String              '' Ruta de acceso a la imagen fisica
+Property Hash256 As String                '' Acceso al hash de la imagen que la hace unica
 Property Thumbnail As String              '' Miniatura
 Property LastSyncDate As Date             '' Ultima fecha de sincronizacion
-Property SyncStatus As String
-Property SoftDelete As Boolean
-Property SoftDeleteDate As Date
-Property SoftDeleteBy As String
-Property SoftDeleteAuto As Date
-Property IsLocked As Boolean
-Property LockedBy As String
-Property Lockreason As String
-
+Property SyncStatus As String             '' Estado de la sincronizacion
+Property SoftDelete As Boolean            '' Indicador para saber si fue borrada
+Property SoftDeleteDate As Date           '' Fecha de la accion de borrado
+Property SoftDeleteBy As String           '' Usuario que ejecuto la accion de borrado
+Property SoftDeleteAuto As Date           '' Fecha en que se eliminara de la bandeja de eliminacion
+Property IsLocked As Boolean              '' Indicador para saber si la imagen esta bloquedad para eliminacion
+Property LockedBy As String               '' Usuario que realiza la accion de bloqueo
+Property Lockreason As String             '' Razon del bloqueo de la imagen
+Property Read HasThumbnail As Boolean     '' Indicador para saber si tiene miniatura
 '=================================================
 '
 '        Getters and Setters

@@ -31,7 +31,7 @@ Public Sub Main()
   ' Crea el servicio de creacion de fotos
   $photoService = New PhotoService($log4gambas, $photorepository, $compressionService, $configuration)
 
-  ' Si es primera vez, insertar datos de prueba
+  ' Si es primera vez, insertar datos de prueba en base privada
   If $configuration.IsFirstRun Then
     $photoService.InsertSeedData()
   Endif

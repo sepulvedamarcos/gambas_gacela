@@ -48,7 +48,7 @@ Public Sub Form_Drop()
   For Each fileOne In fileDrop
     $log4Gambas.Debug("archivo : " & fileOne)
 
-    $photoService.ImportPhoto(fileOne)
+    $photoService.ImportPhoto(fileOne, "")
   Next
 
   panelDespliegue.Children.Clear
@@ -62,6 +62,8 @@ Private Sub CreatePhotoPanels(photos As PhotoEntity[])
   Dim formphoto As FPhoto
   Dim photo As PhotoEntity
 
+  ' TODO: aca deberia levantar las ultimas preferencias
+  $log4Gambas.Info("Creacion de paneles iniciales")
   For Each photo In photos
     PanelPhoto = New Panel(panelDespliegue)
     PanelPhoto.Width = $width

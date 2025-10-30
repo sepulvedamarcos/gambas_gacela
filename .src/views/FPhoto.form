@@ -3,11 +3,17 @@
 { Form Form
   MoveScaled(0,0,15,14)
   Expand = True
-  Arrangement = Arrange.Fill
   { PictureBoxPhoto PictureBox
     MoveScaled(1,1,12,11)
-    Expand = True
+    Padding = 4
     Alignment = Align.Center
-    Mode = PictureBox.Contain
+    Border = Border.Sunken
+    Mode = PictureBox.Fill
+  }
+  { ButtonSeleccionar Button
+    MoveScaled(1,1,3,3)
+    Visible = False
+    AutoResize = True
+    Picture = Picture["icon:/medium/add"]
   }
 }
