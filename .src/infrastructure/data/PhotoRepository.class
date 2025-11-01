@@ -8,6 +8,7 @@
 Private $log4Gambas As Log4Gambas3
 Private $dbContext As SQLiteContext
 Private $configuration As Configuration
+Private $titulo As String = "[PhotoRepository] "
 
 Property Read DBContext As SQLiteContext
 
@@ -31,7 +32,7 @@ Public Function getPhotos(Optional id As Integer) As PhotoEntity[]
   Dim photoResult As Result
   Dim query As String
 
-  $log4Gambas.Debug("Extraccion de fotos")
+  $log4Gambas.Debug($titulo & "Extraccion de fotos")
 
   query = "soft_delete = &1"
   If id > 0 Then
@@ -41,26 +42,26 @@ Public Function getPhotos(Optional id As Integer) As PhotoEntity[]
   photoResult = $dbContext.DBConnection.Find(Constants.TABLE_PHOTOS, query, False)
 
   If photoResult.Available Then
-    $log4Gambas.Debug("Extraccion de " & photoResult.Count & " fotos de la respuesta")
+    $log4Gambas.Debug($titulo & "Extraccion de " & photoResult.Count & " fotos de la respuesta")
 
     Return MapResultToEntities(photoResult)
 
   Endif
 
 Catch
-  $log4Gambas.Error("Problemas para recuperar las fotos " & Error.Text)
+  $log4Gambas.Error($titulo & "Problemas para recuperar las fotos " & Error.Text)
   Error.Propagate
 
 End
 
-Public Function FindWithFilters(whereClause As String, params As Variant[], sortBy As String, sortOrder As String, limit As Integer, offset As Integer) As PhotoEntity[]
+Public Function FindWithFilters(whereClause As String, sortBy As String, sortOrder As String, limit As Integer, offset As Integer) As PhotoEntity[] '' Metodo para obtener los registros con filtros
 
   Dim result As Result
   Dim query As String
   Dim orderBy As String = "import_date"
   Dim orderType As String = "desc"
 
-  $log4gambas.Debug("Repository: Ejecutando query con filtros")
+  $log4gambas.Debug($titulo & "Ejecutando query con filtros")
 
   If sortBy <> "" Then
     orderBy = orderBy
@@ -80,42 +81,47 @@ Public Function FindWithFilters(whereClause As String, params As Variant[], sort
     " OFFSET " & offset
 
   ' Convertir params a array para Exec
-  result = $dbContext.Exec(query, params)
+  result = $dbContext.DBConnection.Exec(query)
 
   If result.Available Then
     Return MapResultToEntities(result)
   Endif
 
 Catch
-  $log4gambas.Error("Error en FindWithFilters: " & Error.Text)
+  $log4gambas.Error($titulo & "Problema en FindWithFilters: " & Error.Text)
 
   Return New PhotoEntity[]
 
 End
 
-Public Function CountWithFilters(whereClause As String, params As Variant[]) As Integer
+Public Function CountWithFilters(whereClause As String) As Integer '' Metodo para contar los regsitros que tiene la tabla de fotos
 
   Dim result As Result
   Dim query As String
 
+  $log4gambas.Info($titulo & "Cuenta cantidad de fotos en la base actual")
+
   query = "SELECT COUNT(*) as total FROM " & Constants.TABLE_PHOTOS &
     " WHERE " & whereClause
-  result = $dbContext.Exec(query, params)
+  result = $dbContext.DBConnection.Exec(query)
 
   If result.Available Then
     Return result["total"]
   Endif
 
-Catch
-  $log4gambas.Error("Error en CountWithFilters: " & Error.Text)
-
   Return 0
+
+Catch
+  $log4gambas.Error($titulo & "Problema en CountWithFilters: " & Error.Text)
+  Error.Propagate
 
 End
 
 Public Function createPhoto(photo As PhotoEntity) As PhotoEntity
 
   Dim result As Result
+
+  $dbContext.DBConnection.Begin()
 
   result = $dbContext.DBConnection.Create(Constants.TABLE_PHOTOS)
 
@@ -125,7 +131,7 @@ Public Function createPhoto(photo As PhotoEntity) As PhotoEntity
   result["creation_date"] = Now()
   result["import_date"] = photo.ImportDate
   result["description"] = photo.Description
-  result["stars"] = photo.Stars
+  result["stars"] = photo.Stars & "x"
   result["import_user"] = photo.ImportUser
   result["image_path"] = photo.ImagePath
   result["hash256"] = photo.Hash256
@@ -143,6 +149,61 @@ Public Function createPhoto(photo As PhotoEntity) As PhotoEntity
 
   result.Update()
 
+  $dbContext.DBConnection.Commit
+
+Catch
+  $dbContext.DBConnection.Rollback
+  $log4gambas.Error($titulo & "Problemas al crear una foto, se hace Rollback")
+  Error.Propagate
+
+End
+
+Public Function ValidateHash256Exist(hash256 As String) As Boolean
+
+  Dim query As String
+  Dim total As Integer
+  Dim result As Result
+
+  query = "SELECT COUNT(*) as total FROM " & Constants.TABLE_PHOTOS &
+    " WHERE hash256 = &1"
+  result = $dbContext.DBConnection.Exec(query, hash256)
+
+  If result.Available Then
+    total = result["total"]
+    If total >= 1 Then
+      Return True
+    End If
+  End If
+
+  Return False
+
+Catch
+  $log4gambas.Error($titulo & "Error al buscar foto por hash256")
+  Error.Propagate
+
+End
+
+Public Function FindAlbums(album As String) As AlbumEntity[]
+
+  Dim query As String
+  Dim result As Result
+
+  query = "SELECT * FROM " & Constants.TABLE_ALBUMS
+  If album <> "" Then
+    query &= " WHERE name LIKE " & album
+  Endif
+
+  result = $dbContext.DBConnection.Exec(query)
+  If Result.Available Then
+
+  Endif
+
+  Return []
+
+Catch
+  $log4gambas.Error($titulo & "Problema al leer los albums")
+  Error.Propagate
+
 End
 
 ' ==================================================
@@ -151,7 +212,7 @@ End
 '
 ' ==================================================
 
-Private Function MapResultToEntities(result As Result) As PhotoEntity[] '' Mapeo privado dentro del Repository
+Private Function MapResultToEntities(result As Result) As PhotoEntity[] '' Mapeo de fotos
 
   Dim photo As PhotoEntity
   Dim photos As New PhotoEntity[]
@@ -189,29 +250,36 @@ Private Function MapResultToEntities(result As Result) As PhotoEntity[] '' Mapeo
   Return photos
 
 Catch
+  $log4gambas.Error($titulo & "Problema en el mapeo de datos photo")
   Error.Propagate
 
 End
 
-Private Sub MapEntityToResult(photo As PhotoEntity, result As Result) '' Mapeo privado Entity → Result
+Private Sub MapAlbumEntity(result As Result) As AlbumEntity[] '' Mapeo de albums
 
-  result["file_name"] = photo.FileName
-  result["md5_hash"] = photo.MD5Hash
-  result["original_size"] = photo.OriginalSize
-  result["compressed_size"] = photo.CompressedSize
-  result["width_pixels"] = photo.WidthPixels
-  result["height_pixels"] = photo.HeightPixels
-  result["original_format"] = photo.OriginalFormat
-  result["creation_date"] = photo.CreationDate
-  result["import_date"] = photo.ImportDate
-  result["description"] = photo.Description
-  result["is_favorite"] = photo.IsFavorite
-  result["import_user"] = photo.ImportUser
-  result["soft_delete"] = Not photo.SoftDelete
-  result["compressed_photo"] = photo.CompressedPhoto
-  result["thumbnail"] = photo.Thumbnail
-  result["compression_level"] = photo.CompressionLevel
-  result["last_sync_date"] = photo.LastSyncDate
+  Dim album As AlbumEntity
+  Dim albums As AlbumEntity[]
+
+  For Each album In result
+    album = New AlbumEntity
+
+    ' Mapeo todos los campos
+    album.Id = result["id"]
+    album.Name = result["name"]
+    album.Description = result["description"]
+    album.CreationDate = result["creation_date"]
+    album.CreationUser = result["creation_user"]
+    album.Thumbnail = result["thumbnail"]
+    album.SoftDelete = result["soft_delete"]
+    '
+    albums.Add(album)
+  Next
+
+  Return albums
+
+Catch
+  $log4gambas.Error($titulo & "Problema en el mapeo de datos album")
+  Error.Propagate
 
 End
 

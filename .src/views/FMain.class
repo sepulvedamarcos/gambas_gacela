@@ -30,30 +30,27 @@ Public Sub Form_Open()
   Endif
 
   ClearPhotoGallery()
-  CreatePhotoPanels($photoService.GetAllPhotos())
+  ' TODO: aqui deberia levantar los filtros usados la ultima vez
+  CreatePhotoPanels($photoService.loadFirstPage())
 
 End
 
 Public Sub Form_Drop()
 
-  Dim clearData As String
-  Dim dropping As Variant
   Dim fileDrop As String[]
-  Dim fileOne As String
-  Dim cuente As Variant
+  Dim selector As FImportar
 
   $log4Gambas.Debug("Activa drop")
 
   fileDrop = Drag.Paste("text/uri-list")
 
-  For Each fileOne In fileDrop
-    $log4Gambas.Debug("archivo : " & fileOne)
+  selector = New FImportar($photoService, $log4Gambas)
+  selector.ShowDialog()
 
-    $photoService.ImportPhoto(fileOne, "")
-  Next
+  $photoService.ImportPhoto(fileDrop, "")
 
-  PanelGalleryContent.Children.Clear
-  CreatePhotoPanels($photoService.loadFirstPage())
+  ' PanelGalleryContent.Children.Clear
+  CreatePhotoPanels($photoService.loadNextPage())
 
 End
 
@@ -101,7 +98,21 @@ End
 
 Public Sub PanelGalleryContent_Scroll()
 
-  Print "scroll"
+  Dim scrollPos As Float
+  Dim scrollMax As Float
+  Dim threshold As Float = 0.8  ' 80% del scroll
+
+  ' Calcular posición del scroll (0.0 a 1.0)
+  scrollMax = PanelGalleryContent.ScrollHeight - PanelGalleryContent.ClientHeight
+
+  If scrollMax <= 0 Then Return
+
+  scrollPos = PanelGalleryContent.ScrollY / scrollMax
+
+  ' Si llegó al 80% y no está cargando, cargar más
+  If scrollPos >= threshold Then
+    CreatePhotoPanels($photoService.loadNextPage())
+  Endif
 
 End
 
@@ -124,7 +135,6 @@ Private Sub CreatePhotoPanels(photos As PhotoEntity[])
   Dim photo As PhotoEntity
   Dim pictureBox As PictureBox
 
-  ' TODO: aca deberia levantar las ultimas preferencias
   $log4Gambas.Info("Creacion de paneles iniciales")
   For Each photo In photos
     panelPhoto = New Panel(PanelGalleryContent)

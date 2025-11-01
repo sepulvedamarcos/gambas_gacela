@@ -26,7 +26,6 @@ Private $appPath As String                                                    ''
 Private $log4gambas As New Log4Gambas3                                        '' Objeto para hacer logger
 Private $soTheme As Integer                                                   '' Indica el tema activo del SO
 Private $appTheme As Integer                                                  '' Indica el tema que usa la aplicacion
-Private $libraryName As String                                                '' Nombre de la libreria
 
 ' Propiedades
 Property Read IsFirstRun As Boolean                                           '' Indicador de primera ejecución

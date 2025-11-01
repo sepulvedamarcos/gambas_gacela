@@ -10,8 +10,7 @@ Private $photoRepository As PhotoRepository
 Private $compressionService As CompressionService
 Private $configuration As Configuration
 Private $iterator As PhotoIterator
-
-Private Const THUMBNAIL_MIN_BENEFIT As Float = 1.5      ' Generar si reduce al menos 50%
+Private $titulo As String = "[PhotoService] "
 
 ' ==================================================
 '
@@ -42,7 +41,17 @@ Public Function GetAllPhotos() As PhotoEntity[]
 
 End
 
-Public Function loadFirstPage() As PhotoEntity[]
+Public Function loadFirstPage() As PhotoEntity[] '' Metodo para cargar la primera pagina usando filtros definidos anteriormente
+
+  $iterator.Reset
+  Return $iterator.LoadNextBatch()
+
+End
+
+Public Function loadNextPage() As PhotoEntity[] '' Metodo para cargar paginas segun filtros definidos en pantalla
+
+  ' $iterator.Reset
+  Return $iterator.LoadNextBatch()
 
 End
 
@@ -91,9 +100,18 @@ Catch
 
 End
 
-Public Sub ImportPhoto(imagenPath As String, description As String)
+Public Sub ImportPhotos(imagesPath As String[], album As String, tags As String)
 
-  If SavePhoto(imagenPath, description) Then Error.Raise("Error al insertar foto" & imagenPath)
+  Dim photo As String
+
+  For Each photo In imagesPath
+
+    $log4gambas.Debug($titulo & "Archivo a procesar " & photo)
+    If SavePhoto(photo, album) Then
+      Error.Raise("Error al insertar foto" & photo)
+    End If
+
+  Next
 
 Catch
   $log4gambas.Error("Error insertando foto " & Error.Text)
@@ -106,61 +124,61 @@ Public Function GetPhotoIterator() As PhotoIterator
 
 End
 
+Public Function FindAlbums(album As String) As AlbumEntity[]
+
+  $log4gambas.Debug($titulo & "album :" & album)
+
+  Return New AlbumEntity[]
+
+End
+
 ' ==================================================
 '
 '          Metodos privados
 '
 ' ==================================================
 
-Private Function SavePhoto(imagenPath As String, description As String) As Boolean
+Private Function SavePhoto(imagenPath As String, album As String) As Boolean
 
   Dim photoEntity As New PhotoEntity
   Dim originalPhoto As Image
   Dim imageString As String
-  Dim compressedZip As String
-  Dim thumbnailImage As Image
-  Dim tempThumbFile As String
-  Dim thumbnailString As String = ""
-  Dim extension As String
-  Dim filename As String
-  Dim reduction As Integer
+  Dim hash256 As String
+  Dim filename As String = File.BaseName(imagenPath) & "." & File.Ext(imagenPath)
+  Dim newPath As String
 
   ' Cargar imagen original
   originalPhoto = Image.Load(imagenPath)
   imageString = File.Load(imagenPath)
 
-  $log4gambas.Debug("Tamaño de la imagen " & originalPhoto.Width & " x " & originalPhoto.Height)
+  hash256 = $compressionService.hash256Calculate(imageString)
 
-  If originalPhoto.Width <= 255 Or originalPhoto.Height <= 255 Then
-    $log4gambas.Debug("imagen es menor que rango aceptable va sin miniatura")
-  Else
-    $log4gambas.Debug("Thumbnail beneficioso: " & originalPhoto.Width & "px → " & "(reducción " & Format(reduction, "0.00") & "x)")
+  If $compressionService.ValidateFileExist(filename) Then
+    Error.Raise("El archivo " & filename & " ya existe")
+  End If
+  If $photoRepository.ValidateHash256Exist(hash256) Then
+    Error.Raise("El archivo " & filename & " ya existe")
+  End If
 
-    thumbnailImage = originalPhoto.Stretch(320, -1)
-    tempThumbFile = Temp() & "." & extension
-    thumbnailString = thumbnailImage.ToString(extension, 100)
-    File.Save(tempThumbFile, thumbnailString)
-    thumbnailString = File.Load(tempThumbFile)
-  Endif
+  newPath = $compressionService.SaveImageIO(imagenPath)
 
-  photoEntity.FileName = File.BaseName(imagenPath) & "." & File.Ext(imagenPath)
+  photoEntity.FileName = filename
   photoEntity.WidthPixels = originalPhoto.Width
   photoEntity.HeightPixels = originalPhoto.Height
   photoEntity.ImportDate = Now()
-  photoEntity.Description = description
+  photoEntity.Description = ""
   photoEntity.Stars = 0
   photoEntity.ImportUser = User.Name
-  photoEntity.ImagePath = $compressionService.SaveImageIO(imagenPath)
-  photoEntity.Hash256 = $compressionService.hash256Calculate(imagenPath)
-  photoEntity.Thumbnail = thumbnailString
+  photoEntity.ImagePath = newPath
+  photoEntity.Hash256 = hash256
+  photoEntity.Thumbnail = $compressionService.CreateThumbnail(originalPhoto, imagenPath)
 
   photoEntity = $photoRepository.createPhoto(photoEntity)
-
-  Try Kill tempThumbFile
 
   Return photoEntity
 
 Catch
+  Kill newPath &/ filename
   $log4gambas.Error("Error importando foto: " & Error.Text)
   Error.Propagate
 

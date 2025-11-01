@@ -77,7 +77,6 @@ End
 
 Public Sub Form_Enter()
 
-  Print "entre form"
   ButtonSeleccionar.Visible = True
   ButtonSeleccionar.Raise()
 
@@ -85,7 +84,6 @@ End
 
 Public Sub Form_Leave()
 
-  Print "sali form"
   ButtonSeleccionar.Visible = False
 
 End
